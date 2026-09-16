@@ -1,0 +1,135 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-09-16T00:00:00.000Z",
+  "__export_source": "auth-server-repo",
+  "resources": [
+    {
+      "_id": "wrk_auth_server",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "auth-server",
+      "description": "OAuth 2.0 Authorization Server with MFA"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_auth_server",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:8080"
+      }
+    },
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "parentId": "wrk_auth_server",
+      "name": "Auth"
+    },
+    {
+      "_id": "req_register",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Register",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/register",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"StrongPassword123!\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "_id": "req_verify",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Verify Email",
+      "method": "GET",
+      "url": "{{ _.base_url }}/auth/verify",
+      "parameters": [{ "name": "token", "value": "" }]
+    },
+    {
+      "_id": "req_login",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Login",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/login",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"StrongPassword123!\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "_id": "req_change_password",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Change Password",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/auth/password",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"user@example.com\",\n  \"currentPassword\": \"StrongPassword123!\",\n  \"newPassword\": \"EvenStrongerPassword456!\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "_id": "req_password_reset_request",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Password Reset Request",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/password-reset-request",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"user@example.com\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "_id": "req_password_reset",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Password Reset",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/password-reset",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"token\": \"\",\n  \"newPassword\": \"EvenStrongerPassword456!\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "_id": "req_me_get",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Get Current User",
+      "method": "GET",
+      "url": "{{ _.base_url }}/auth/me",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_me_put",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Update Email",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/auth/me",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"currentPassword\": \"StrongPassword123!\",\n  \"newEmail\": \"new-user@example.com\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    }
+  ]
+}
