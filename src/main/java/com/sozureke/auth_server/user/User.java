@@ -1,10 +1,10 @@
 package com.sozureke.auth_server.user;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "users")
@@ -13,39 +13,39 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String email;
+  @Column(nullable = false, unique = true)
+  private String email;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
+  @Column(name = "password_hash", nullable = false)
+  private String passwordHash;
 
-    @Column(name = "email_verified", nullable = false)
-    private boolean emailVerified = false;
+  @Column(name = "email_verified", nullable = false)
+  private boolean emailVerified = false;
 
-    @Column(name = "verification_token")
-    private String verificationToken;
+  @Column(name = "verification_token")
+  private String verificationToken;
 
-    @Column(name = "failed_login_attempts", nullable = false)
-    private int failedLoginAttempts = 0;
+  @Column(name = "failed_login_attempts", nullable = false)
+  private int failedLoginAttempts = 0;
 
-    @Column(name = "locked_until")
-    private LocalDateTime lockedUntil;
+  @Column(name = "locked_until")
+  private LocalDateTime lockedUntil;
 
-    @Column(nullable = false)
-    private boolean enabled = true;
+  @Column(nullable = false)
+  private boolean enabled = true;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+  @Column(name = "created_at", nullable = false)
+  private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private LocalDateTime updatedAt;
 
-    public User(String email, String passwordHash) {
-        this.email = email;
-        this.passwordHash = passwordHash;
-    }
+  public User(String email, String passwordHash) {
+    this.email = email;
+    this.passwordHash = passwordHash;
+  }
 }
