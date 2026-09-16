@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "AuthServerApplication",
+      "request": "launch",
+      "mainClass": "com.sozureke.auth_server.AuthServerApplication",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}
