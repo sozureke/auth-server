@@ -29,6 +29,12 @@ public class User {
   @Column(name = "verification_token")
   private String verificationToken;
 
+  @Column(name = "reset_token")
+  private String resetToken;
+
+  @Column(name = "reset_token_expires_at")
+  private LocalDateTime resetTokenExpiresAt;
+
   @Column(name = "failed_login_attempts", nullable = false)
   private int failedLoginAttempts = 0;
 

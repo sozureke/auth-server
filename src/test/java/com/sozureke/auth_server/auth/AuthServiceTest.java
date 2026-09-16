@@ -30,10 +30,8 @@ class AuthServiceTest {
   private static final String RAW_PASSWORD = "correct-password";
   private static final String PASSWORD_HASH = "hashed-password";
 
-  @Mock
-  private UserRepository userRepository;
-  @Mock
-  private PasswordEncoder passwordEncoder;
+  @Mock private UserRepository userRepository;
+  @Mock private PasswordEncoder passwordEncoder;
 
   private AuthService authService;
 

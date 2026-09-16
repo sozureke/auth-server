@@ -4,6 +4,7 @@ import com.sozureke.auth_server.auth.exception.AccountDisabledException;
 import com.sozureke.auth_server.auth.exception.AccountLockedException;
 import com.sozureke.auth_server.auth.exception.EmailNotVerifiedException;
 import com.sozureke.auth_server.auth.exception.InvalidCredentialsException;
+import com.sozureke.auth_server.auth.exception.InvalidResetTokenException;
 import com.sozureke.auth_server.user.EmailAlreadyExistsException;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,6 +46,12 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiError> handleAccountDisabled(AccountDisabledException ex) {
     ApiError error = new ApiError(HttpStatus.FORBIDDEN.value(), ex.getMessage(), null);
     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+  }
+
+  @ExceptionHandler(InvalidResetTokenException.class)
+  public ResponseEntity<ApiError> handleInvalidResetToken(InvalidResetTokenException ex) {
+    ApiError error = new ApiError(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), null);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
