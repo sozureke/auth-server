@@ -1,5 +1,6 @@
 package com.sozureke.auth_server.auth;
 
+import com.sozureke.auth_server.auth.dto.ChangeEmailRequest;
 import com.sozureke.auth_server.auth.dto.ChangePasswordRequest;
 import com.sozureke.auth_server.auth.dto.LoginRequest;
 import com.sozureke.auth_server.auth.dto.PasswordResetConfirmRequest;
@@ -7,6 +8,9 @@ import com.sozureke.auth_server.auth.dto.PasswordResetRequest;
 import com.sozureke.auth_server.user.dto.UserResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,5 +53,21 @@ public class AuthController {
       @Valid @RequestBody PasswordResetConfirmRequest request) {
     authService.resetPassword(request.token(), request.newPassword());
     return ResponseEntity.ok().build();
+  }
+
+  @GetMapping("/me")
+  public ResponseEntity<UserResponse> me(@AuthenticationPrincipal UserDetails principal) {
+    UserResponse response = authService.getCurrentUser(principal.getUsername());
+    return ResponseEntity.ok(response);
+  }
+
+  @PutMapping("/me")
+  public ResponseEntity<UserResponse> updateEmail(
+      @AuthenticationPrincipal UserDetails principal,
+      @Valid @RequestBody ChangeEmailRequest request) {
+    UserResponse response =
+        authService.changeEmail(
+            principal.getUsername(), request.currentPassword(), request.newEmail());
+    return ResponseEntity.ok(response);
   }
 }

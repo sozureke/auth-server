@@ -5,17 +5,22 @@ import com.sozureke.auth_server.auth.exception.AccountLockedException;
 import com.sozureke.auth_server.auth.exception.EmailNotVerifiedException;
 import com.sozureke.auth_server.auth.exception.InvalidCredentialsException;
 import com.sozureke.auth_server.auth.exception.InvalidResetTokenException;
+import com.sozureke.auth_server.user.EmailAlreadyExistsException;
 import com.sozureke.auth_server.user.User;
 import com.sozureke.auth_server.user.UserRepository;
 import com.sozureke.auth_server.user.dto.UserResponse;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
+  private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+
   private static final int MAX_FAILED_ATTEMPTS = 5;
   private static final long LOCK_DURATION_MINUTES = 15;
 
@@ -64,8 +69,7 @@ public class AuthService {
               user.setResetTokenExpiresAt(LocalDateTime.now().plusHours(1));
               userRepository.save(user);
 
-              System.out.println(
-                  "Password reset link: /auth/password-reset?token=" + user.getResetToken());
+              log.info("Password reset link: /auth/password-reset?token={}", user.getResetToken());
             });
   }
 
@@ -86,6 +90,32 @@ public class AuthService {
     user.setFailedLoginAttempts(0);
     user.setLockedUntil(null);
     userRepository.save(user);
+  }
+
+  public UserResponse getCurrentUser(String email) {
+    User user = userRepository.findByEmail(email).orElseThrow(InvalidCredentialsException::new);
+    return UserResponse.from(user);
+  }
+
+  @Transactional
+  public UserResponse changeEmail(String currentEmail, String currentPassword, String newEmail) {
+    User user =
+        userRepository.findByEmail(currentEmail).orElseThrow(InvalidCredentialsException::new);
+    verifyCredentials(user, currentPassword);
+
+    if (!newEmail.equals(currentEmail) && userRepository.existsByEmail(newEmail))
+      throw new EmailAlreadyExistsException(newEmail);
+
+    user.setEmail(newEmail);
+    user.setEmailVerified(false);
+    user.setVerificationToken(UUID.randomUUID().toString());
+    user.setResetToken(null);
+    user.setResetTokenExpiresAt(null);
+    userRepository.save(user);
+
+    log.info("Verification link: /auth/verify?token={}", user.getVerificationToken());
+
+    return UserResponse.from(user);
   }
 
   private void verifyCredentials(User user, String rawPassword) {

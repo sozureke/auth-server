@@ -99,6 +99,37 @@
         "text": "{\n  \"token\": \"\",\n  \"newPassword\": \"EvenStrongerPassword456!\"\n}"
       },
       "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "_id": "req_me_get",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Get Current User",
+      "method": "GET",
+      "url": "{{ _.base_url }}/auth/me",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_me_put",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Update Email",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/auth/me",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"currentPassword\": \"StrongPassword123!\",\n  \"newEmail\": \"new-user@example.com\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }]
     }
   ]
 }
