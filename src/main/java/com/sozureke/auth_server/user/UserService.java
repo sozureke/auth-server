@@ -3,11 +3,15 @@ package com.sozureke.auth_server.user;
 import com.sozureke.auth_server.config.InvalidVerificationTokenException;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class UserService {
+  private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
 
@@ -26,12 +30,10 @@ public class UserService {
     User user = new User(email, passwordHash);
 
     user.setVerificationToken(UUID.randomUUID().toString());
-    user.setCreatedAt(java.time.LocalDateTime.now());
-    user.setUpdatedAt(java.time.LocalDateTime.now());
 
     User savedUser = userRepository.save(user);
 
-    System.out.println("Verification link: /auth/verify?token=" + savedUser.getVerificationToken());
+    log.info("Verification link: /auth/verify?token={}", savedUser.getVerificationToken());
     return savedUser;
   }
 
@@ -43,7 +45,6 @@ public class UserService {
 
     user.setEmailVerified(true);
     user.setVerificationToken(null);
-    user.setUpdatedAt(java.time.LocalDateTime.now());
 
     return userRepository.save(user);
   }

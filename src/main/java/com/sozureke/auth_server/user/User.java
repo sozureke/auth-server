@@ -54,4 +54,16 @@ public class User {
     this.email = email;
     this.passwordHash = passwordHash;
   }
+
+  @PrePersist
+  protected void onCreate() {
+    LocalDateTime now = LocalDateTime.now();
+    createdAt = now;
+    updatedAt = now;
+  }
+
+  @PreUpdate
+  protected void onUpdate() {
+    updatedAt = LocalDateTime.now();
+  }
 }

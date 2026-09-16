@@ -54,6 +54,13 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
   }
 
+  @ExceptionHandler(InvalidVerificationTokenException.class)
+  public ResponseEntity<ApiError> handleInvalidVerificationToken(
+      InvalidVerificationTokenException ex) {
+    ApiError error = new ApiError(HttpStatus.NOT_FOUND.value(), ex.getMessage(), null);
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiError> handleValidationErrors(MethodArgumentNotValidException ex) {
     Map<String, String> fieldErrors = new HashMap<>();
