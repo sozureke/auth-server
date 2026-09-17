@@ -284,9 +284,8 @@ class AuthServiceTest {
   void changeEmail_throwsAccountLocked_whenLockedUntilInFuture() {
     User user = verifiedEnabledUser();
     user.setLockedUntil(LocalDateTime.now().plusMinutes(5));
-    when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
-    assertThatThrownBy(() -> authService.changeEmail(EMAIL, RAW_PASSWORD, "new@example.com"))
+    assertThatThrownBy(() -> authService.changeEmail(user, RAW_PASSWORD, "new@example.com"))
         .isInstanceOf(AccountLockedException.class);
 
     verify(passwordEncoder, never()).matches(any(), any());
@@ -296,10 +295,9 @@ class AuthServiceTest {
   void changeEmail_throwsInvalidCredentials_andIncrementsAttempts_whenCurrentPasswordWrong() {
     User user = verifiedEnabledUser();
     user.setFailedLoginAttempts(1);
-    when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(RAW_PASSWORD, PASSWORD_HASH)).thenReturn(false);
 
-    assertThatThrownBy(() -> authService.changeEmail(EMAIL, RAW_PASSWORD, "new@example.com"))
+    assertThatThrownBy(() -> authService.changeEmail(user, RAW_PASSWORD, "new@example.com"))
         .isInstanceOf(InvalidCredentialsException.class);
 
     assertThat(user.getFailedLoginAttempts()).isEqualTo(2);
@@ -309,11 +307,10 @@ class AuthServiceTest {
   @Test
   void changeEmail_throwsEmailAlreadyExists_whenNewEmailTaken() {
     User user = verifiedEnabledUser();
-    when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(RAW_PASSWORD, PASSWORD_HASH)).thenReturn(true);
     when(userRepository.existsByEmail("taken@example.com")).thenReturn(true);
 
-    assertThatThrownBy(() -> authService.changeEmail(EMAIL, RAW_PASSWORD, "taken@example.com"))
+    assertThatThrownBy(() -> authService.changeEmail(user, RAW_PASSWORD, "taken@example.com"))
         .isInstanceOf(EmailAlreadyExistsException.class);
   }
 
@@ -322,11 +319,10 @@ class AuthServiceTest {
     User user = verifiedEnabledUser();
     user.setResetToken("stale-reset-token");
     user.setResetTokenExpiresAt(LocalDateTime.now().plusMinutes(30));
-    when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(RAW_PASSWORD, PASSWORD_HASH)).thenReturn(true);
     when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
 
-    UserResponse response = authService.changeEmail(EMAIL, RAW_PASSWORD, "new@example.com");
+    UserResponse response = authService.changeEmail(user, RAW_PASSWORD, "new@example.com");
 
     assertThat(response.email()).isEqualTo("new@example.com");
     assertThat(user.getEmail()).isEqualTo("new@example.com");
@@ -335,23 +331,5 @@ class AuthServiceTest {
     assertThat(user.getResetToken()).isNull();
     assertThat(user.getResetTokenExpiresAt()).isNull();
     verify(userRepository).save(user);
-  }
-
-  @Test
-  void getCurrentUser_throwsInvalidCredentials_whenUserNotFound() {
-    when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
-
-    assertThatThrownBy(() -> authService.getCurrentUser(EMAIL))
-        .isInstanceOf(InvalidCredentialsException.class);
-  }
-
-  @Test
-  void getCurrentUser_returnsUserResponse_whenUserFound() {
-    User user = verifiedEnabledUser();
-    when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
-
-    UserResponse response = authService.getCurrentUser(EMAIL);
-
-    assertThat(response.email()).isEqualTo(EMAIL);
   }
 }

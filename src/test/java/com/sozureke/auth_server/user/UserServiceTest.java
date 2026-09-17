@@ -7,6 +7,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sozureke.auth_server.config.InvalidVerificationTokenException;
+import com.sozureke.auth_server.role.Role;
+import com.sozureke.auth_server.role.RoleRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,12 +26,13 @@ class UserServiceTest {
 
   @Mock private UserRepository userRepository;
   @Mock private PasswordEncoder passwordEncoder;
+  @Mock private RoleRepository roleRepository;
 
   private UserService userService;
 
   @BeforeEach
   void setUp() {
-    userService = new UserService(userRepository, passwordEncoder);
+    userService = new UserService(userRepository, passwordEncoder, roleRepository);
   }
 
   @Test
@@ -46,6 +49,7 @@ class UserServiceTest {
   void register_savesUser_withHashedPasswordAndVerificationToken() {
     when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
     when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(PASSWORD_HASH);
+    when(roleRepository.findByName("USER")).thenReturn(Optional.of(new Role("USER")));
     when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     User savedUser = userService.register(EMAIL, RAW_PASSWORD);
@@ -54,6 +58,19 @@ class UserServiceTest {
     assertThat(savedUser.getPasswordHash()).isEqualTo(PASSWORD_HASH);
     assertThat(savedUser.getVerificationToken()).isNotBlank();
     assertThat(savedUser.isEmailVerified()).isFalse();
+    assertThat(savedUser.getRoles()).extracting(Role::getName).containsExactly("USER");
+  }
+
+  @Test
+  void register_throwsIllegalState_whenDefaultRoleNotSeeded() {
+    when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
+    when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(PASSWORD_HASH);
+    when(roleRepository.findByName("USER")).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> userService.register(EMAIL, RAW_PASSWORD))
+        .isInstanceOf(IllegalStateException.class);
+
+    verify(userRepository, org.mockito.Mockito.never()).save(any());
   }
 
   @Test

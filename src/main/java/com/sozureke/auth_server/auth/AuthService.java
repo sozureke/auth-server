@@ -92,15 +92,9 @@ public class AuthService {
     userRepository.save(user);
   }
 
-  public UserResponse getCurrentUser(String email) {
-    User user = userRepository.findByEmail(email).orElseThrow(InvalidCredentialsException::new);
-    return UserResponse.from(user);
-  }
-
   @Transactional
-  public UserResponse changeEmail(String currentEmail, String currentPassword, String newEmail) {
-    User user =
-        userRepository.findByEmail(currentEmail).orElseThrow(InvalidCredentialsException::new);
+  public UserResponse changeEmail(User user, String currentPassword, String newEmail) {
+    String currentEmail = user.getEmail();
     verifyCredentials(user, currentPassword);
 
     if (!newEmail.equals(currentEmail) && userRepository.existsByEmail(newEmail))

@@ -9,7 +9,6 @@ import com.sozureke.auth_server.user.dto.UserResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -56,18 +55,16 @@ public class AuthController {
   }
 
   @GetMapping("/me")
-  public ResponseEntity<UserResponse> me(@AuthenticationPrincipal UserDetails principal) {
-    UserResponse response = authService.getCurrentUser(principal.getUsername());
-    return ResponseEntity.ok(response);
+  public ResponseEntity<UserResponse> me(@AuthenticationPrincipal AuthUserDetails principal) {
+    return ResponseEntity.ok(UserResponse.from(principal.getUser()));
   }
 
   @PutMapping("/me")
   public ResponseEntity<UserResponse> updateEmail(
-      @AuthenticationPrincipal UserDetails principal,
+      @AuthenticationPrincipal AuthUserDetails principal,
       @Valid @RequestBody ChangeEmailRequest request) {
     UserResponse response =
-        authService.changeEmail(
-            principal.getUsername(), request.currentPassword(), request.newEmail());
+        authService.changeEmail(principal.getUser(), request.currentPassword(), request.newEmail());
     return ResponseEntity.ok(response);
   }
 }

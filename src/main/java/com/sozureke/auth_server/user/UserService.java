@@ -1,6 +1,8 @@
 package com.sozureke.auth_server.user;
 
 import com.sozureke.auth_server.config.InvalidVerificationTokenException;
+import com.sozureke.auth_server.role.Role;
+import com.sozureke.auth_server.role.RoleRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -14,22 +16,31 @@ public class UserService {
 
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
+  private final RoleRepository roleRepository;
 
-  public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+  public UserService(
+      UserRepository userRepository,
+      PasswordEncoder passwordEncoder,
+      RoleRepository roleRepository) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
+    this.roleRepository = roleRepository;
   }
 
   public User register(String email, String rawPassword) {
-    if (userRepository.existsByEmail(email)) {
-      throw new EmailAlreadyExistsException(email);
-    }
+    if (userRepository.existsByEmail(email)) throw new EmailAlreadyExistsException(email);
 
     String passwordHash = passwordEncoder.encode(rawPassword);
 
     User user = new User(email, passwordHash);
 
     user.setVerificationToken(UUID.randomUUID().toString());
+
+    Role userRole =
+        roleRepository
+            .findByName("USER")
+            .orElseThrow(() -> new IllegalStateException("Default role USER not seeded"));
+    user.getRoles().add(userRole);
 
     User savedUser = userRepository.save(user);
 
