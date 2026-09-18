@@ -130,6 +130,124 @@
         "text": "{\n  \"currentPassword\": \"StrongPassword123!\",\n  \"newEmail\": \"new-user@example.com\"\n}"
       },
       "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "_id": "fld_oauth",
+      "_type": "request_group",
+      "parentId": "wrk_auth_server",
+      "name": "OAuth2"
+    },
+    {
+      "_id": "req_register_client",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "Register Client (admin only)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/clients",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"clientId\": \"demo-client\",\n  \"clientName\": \"Demo Client\",\n  \"redirectUris\": [\"http://localhost:8081/callback\"],\n  \"scopes\": [\"openid\", \"profile\"]\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "_id": "req_oauth_authorize",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "Authorize (Authorization Code + PKCE)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/oauth2/authorize",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      },
+      "parameters": [
+        { "name": "response_type", "value": "code" },
+        { "name": "client_id", "value": "demo-client" },
+        { "name": "redirect_uri", "value": "http://localhost:8081/callback" },
+        { "name": "scope", "value": "openid profile" },
+        { "name": "code_challenge", "value": "" },
+        { "name": "code_challenge_method", "value": "S256" },
+        { "name": "state", "value": "xyz" }
+      ]
+    },
+    {
+      "_id": "req_oauth_token",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "Token (exchange authorization code)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/oauth2/token",
+      "authentication": {
+        "type": "basic",
+        "username": "demo-client",
+        "password": ""
+      },
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          { "name": "grant_type", "value": "authorization_code" },
+          { "name": "code", "value": "" },
+          { "name": "redirect_uri", "value": "http://localhost:8081/callback" },
+          { "name": "code_verifier", "value": "" }
+        ]
+      }
+    },
+    {
+      "_id": "req_oauth_revoke",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "Revoke Token",
+      "method": "POST",
+      "url": "{{ _.base_url }}/oauth2/revoke",
+      "authentication": {
+        "type": "basic",
+        "username": "demo-client",
+        "password": ""
+      },
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [{ "name": "token", "value": "" }]
+      }
+    },
+    {
+      "_id": "req_oauth_introspect",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "Introspect Token",
+      "method": "POST",
+      "url": "{{ _.base_url }}/oauth2/introspect",
+      "authentication": {
+        "type": "basic",
+        "username": "demo-client",
+        "password": ""
+      },
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [{ "name": "token", "value": "" }]
+      }
+    },
+    {
+      "_id": "req_oauth_jwks",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "JWK Set",
+      "method": "GET",
+      "url": "{{ _.base_url }}/oauth2/jwks"
+    },
+    {
+      "_id": "req_oidc_discovery",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "OIDC Discovery",
+      "method": "GET",
+      "url": "{{ _.base_url }}/.well-known/openid-configuration"
     }
   ]
 }
