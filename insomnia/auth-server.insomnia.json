@@ -130,6 +130,174 @@
         "text": "{\n  \"currentPassword\": \"StrongPassword123!\",\n  \"newEmail\": \"new-user@example.com\"\n}"
       },
       "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "_id": "fld_oauth",
+      "_type": "request_group",
+      "parentId": "wrk_auth_server",
+      "name": "OAuth2"
+    },
+    {
+      "_id": "req_register_client",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "Register Client (admin only)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/clients",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"clientId\": \"demo-client\",\n  \"clientName\": \"Demo Client\",\n  \"redirectUris\": [\"http://localhost:8081/callback\"],\n  \"scopes\": [\"openid\", \"profile\"]\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "_id": "req_login_page",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "1. GET /login (fetch CSRF token + session cookie)",
+      "description": "First step of the Authorization Code flow. /oauth2/authorize uses formLogin() + session, not Basic Auth (Basic doesn't work here — OAuth2AuthorizationEndpointFilter runs before BasicAuthenticationFilter in the chain, see TODO.md 3.3 note). Hit this first, copy the _csrf hidden input value from the HTML response into the next request's body.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/login",
+      "headers": [{ "name": "Accept", "value": "text/html" }]
+    },
+    {
+      "_id": "req_login_submit",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "2. POST /login (submit credentials)",
+      "description": "Paste the _csrf value copied from step 1's HTML response. Insomnia's cookie jar carries the session cookie automatically between requests in this workspace. On success this redirects (302) — Insomnia's built-in redirect following will chase it to /oauth2/authorize automatically if scope/client are already filled in step 3's URL, but you can also just proceed to step 3 manually.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/login",
+      "headers": [
+        { "name": "Content-Type", "value": "application/x-www-form-urlencoded" },
+        { "name": "Accept", "value": "text/html" }
+      ],
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          { "name": "username", "value": "user@example.com" },
+          { "name": "password", "value": "StrongPassword123!" },
+          { "name": "_csrf", "value": "" }
+        ]
+      }
+    },
+    {
+      "_id": "req_oauth_authorize",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "3. Authorize (Authorization Code + PKCE)",
+      "description": "Requires an active session from steps 1-2 (Insomnia cookie jar handles this automatically). No Basic Auth here — see note on step 1. code_challenge must be a real PKCE S256 challenge derived from a code_verifier you keep for the token exchange step.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/oauth2/authorize",
+      "headers": [{ "name": "Accept", "value": "text/html" }],
+      "parameters": [
+        { "name": "response_type", "value": "code" },
+        { "name": "client_id", "value": "demo-client" },
+        { "name": "redirect_uri", "value": "http://localhost:8081/callback" },
+        { "name": "scope", "value": "openid profile" },
+        { "name": "code_challenge", "value": "" },
+        { "name": "code_challenge_method", "value": "S256" },
+        { "name": "state", "value": "xyz" }
+      ]
+    },
+    {
+      "_id": "req_oauth_token",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "4. Token (exchange authorization code)",
+      "description": "code comes from the redirect_uri's ?code= query param after step 3. code_verifier is the raw PKCE verifier (not the challenge) used to derive code_challenge in step 3.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/oauth2/token",
+      "authentication": {
+        "type": "basic",
+        "username": "demo-client",
+        "password": ""
+      },
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          { "name": "grant_type", "value": "authorization_code" },
+          { "name": "code", "value": "" },
+          { "name": "redirect_uri", "value": "http://localhost:8081/callback" },
+          { "name": "code_verifier", "value": "" }
+        ]
+      }
+    },
+    {
+      "_id": "req_oauth_refresh",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "5. Token (refresh, rotates the refresh_token)",
+      "description": "refresh_token comes from step 4's response. Each use returns a new refresh_token and invalidates the old one (reuseRefreshTokens=false) — reusing an old one returns invalid_grant.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/oauth2/token",
+      "authentication": {
+        "type": "basic",
+        "username": "demo-client",
+        "password": ""
+      },
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          { "name": "grant_type", "value": "refresh_token" },
+          { "name": "refresh_token", "value": "" }
+        ]
+      }
+    },
+    {
+      "_id": "req_oauth_revoke",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "Revoke Token",
+      "method": "POST",
+      "url": "{{ _.base_url }}/oauth2/revoke",
+      "authentication": {
+        "type": "basic",
+        "username": "demo-client",
+        "password": ""
+      },
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [{ "name": "token", "value": "" }]
+      }
+    },
+    {
+      "_id": "req_oauth_introspect",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "Introspect Token",
+      "method": "POST",
+      "url": "{{ _.base_url }}/oauth2/introspect",
+      "authentication": {
+        "type": "basic",
+        "username": "demo-client",
+        "password": ""
+      },
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [{ "name": "token", "value": "" }]
+      }
+    },
+    {
+      "_id": "req_oauth_jwks",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "JWK Set",
+      "method": "GET",
+      "url": "{{ _.base_url }}/oauth2/jwks"
+    },
+    {
+      "_id": "req_oidc_discovery",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "OIDC Discovery",
+      "method": "GET",
+      "url": "{{ _.base_url }}/.well-known/openid-configuration"
     }
   ]
 }
