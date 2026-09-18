@@ -1,5 +1,6 @@
 package com.sozureke.auth_server.oauth;
 
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.stream.Collectors;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -7,11 +8,18 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Service;
 
 @Service
 public class CustomRegisteredClientRepository implements RegisteredClientRepository {
   private final OAuthClientRepository oAuthClientRepository;
+  private static final TokenSettings TOKEN_SETTINGS =
+      TokenSettings.builder()
+          .accessTokenTimeToLive(Duration.ofMinutes(15))
+          .refreshTokenTimeToLive(Duration.ofDays(7))
+          .reuseRefreshTokens(false)
+          .build();
 
   public CustomRegisteredClientRepository(OAuthClientRepository oAuthClientRepository) {
     this.oAuthClientRepository = oAuthClientRepository;
@@ -56,7 +64,11 @@ public class CustomRegisteredClientRepository implements RegisteredClientReposit
         .redirectUris(uris -> uris.addAll(entity.getRedirectUris()))
         .scopes(scopes -> scopes.addAll(entity.getScopes()))
         .clientSettings(
-            ClientSettings.builder().requireProofKey(entity.isRequireProofKey()).build())
+            ClientSettings.builder()
+                .requireProofKey(entity.isRequireProofKey())
+                .requireAuthorizationConsent(false)
+                .build())
+        .tokenSettings(TOKEN_SETTINGS)
         .build();
   }
 

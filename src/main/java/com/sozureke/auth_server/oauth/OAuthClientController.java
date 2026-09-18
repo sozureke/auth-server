@@ -35,7 +35,7 @@ public class OAuthClientController {
   public ResponseEntity<OAuthClientResponse> register(
       @Valid @RequestBody RegisterClientRequest request) {
     String rawSecret = UUID.randomUUID().toString();
-    String hashedSecret = "{bcrypt}" + passwordEncoder.encode(rawSecret);
+    String hashedSecret = passwordEncoder.encode(rawSecret);
 
     RegisteredClient client =
         RegisteredClient.withId(UUID.randomUUID().toString())
