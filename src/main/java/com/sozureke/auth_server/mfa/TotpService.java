@@ -42,6 +42,10 @@ public class TotpService {
     }
   }
 
+  public String encodeSecret(byte[] secret) {
+    return base32.encodeToString(secret);
+  }
+
   public String otpauthUri(String issuer, String account, byte[] secret) {
     String label = UriUtils.encodePathSegment(issuer + ":" + account, StandardCharsets.UTF_8);
     return "otpauth://totp/%s?secret=%s&issuer=%s"

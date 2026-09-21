@@ -132,6 +132,59 @@
       "headers": [{ "name": "Content-Type", "value": "application/json" }]
     },
     {
+      "_id": "fld_mfa",
+      "_type": "request_group",
+      "parentId": "wrk_auth_server",
+      "name": "MFA"
+    },
+    {
+      "_id": "req_mfa_enable",
+      "_type": "request",
+      "parentId": "fld_mfa",
+      "name": "1. Enable MFA (start enrollment)",
+      "description": "Basic Auth, like the rest of the API. Returns otpauthUri, manualEntryKey (Base32, for typing into an authenticator app by hand) and qrCodeDataUri (a PNG QR code as a data: URI, ready for an <img src>). To SEE the QR while testing in Insomnia use step 1b (GET /auth/mfa/qr) — Insomnia does not render data: URIs inside JSON. The secret is stored encrypted and stays pending — MFA is NOT active until step 2 succeeds. Calling this again while pending generates a NEW secret (the old QR stops working); once MFA is enabled it returns 409.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/mfa/enable",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_mfa_qr",
+      "_type": "request",
+      "parentId": "fld_mfa",
+      "name": "1b. QR code (image/png, pending enrollment)",
+      "description": "Returns the QR code of the enrollment started in step 1 as a PNG — Insomnia shows it directly in the response panel, so you can scan it with an authenticator app from the screen. Does NOT generate a new secret (step 1 does). 409 if enrollment was not started or MFA is already enabled — the secret is never shown again after activation.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/auth/mfa/qr",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_mfa_verify_setup",
+      "_type": "request",
+      "parentId": "fld_mfa",
+      "name": "2. Verify setup (confirm first TOTP code)",
+      "description": "Enter the current 6-digit code from the authenticator app. 200 = MFA is now active. 400 = wrong/malformed code, 409 = enrollment not started (call step 1) or MFA already enabled. A code is single-use: it cannot be replayed.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/mfa/verify-setup",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"code\": \"\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+    },
+    {
       "_id": "fld_oauth",
       "_type": "request_group",
       "parentId": "wrk_auth_server",

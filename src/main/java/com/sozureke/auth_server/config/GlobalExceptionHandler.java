@@ -5,6 +5,9 @@ import com.sozureke.auth_server.auth.exception.AccountLockedException;
 import com.sozureke.auth_server.auth.exception.EmailNotVerifiedException;
 import com.sozureke.auth_server.auth.exception.InvalidCredentialsException;
 import com.sozureke.auth_server.auth.exception.InvalidResetTokenException;
+import com.sozureke.auth_server.mfa.InvalidMfaCodeException;
+import com.sozureke.auth_server.mfa.MfaAlreadyEnabledException;
+import com.sozureke.auth_server.mfa.MfaNotStartedException;
 import com.sozureke.auth_server.user.EmailAlreadyExistsException;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,6 +25,24 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiError> handleEmailExists(EmailAlreadyExistsException ex) {
     ApiError error = new ApiError(HttpStatus.CONFLICT.value(), ex.getMessage(), null);
     return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+  }
+
+  @ExceptionHandler(MfaAlreadyEnabledException.class)
+  public ResponseEntity<ApiError> handleMfaAlreadyEnabled(MfaAlreadyEnabledException ex) {
+    ApiError error = new ApiError(HttpStatus.CONFLICT.value(), ex.getMessage(), null);
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+  }
+
+  @ExceptionHandler(MfaNotStartedException.class)
+  public ResponseEntity<ApiError> handleMfaNotStarted(MfaNotStartedException ex) {
+    ApiError error = new ApiError(HttpStatus.CONFLICT.value(), ex.getMessage(), null);
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+  }
+
+  @ExceptionHandler(InvalidMfaCodeException.class)
+  public ResponseEntity<ApiError> handleInvalidMfaCode(InvalidMfaCodeException ex) {
+    ApiError error = new ApiError(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), null);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
   }
 
   @ExceptionHandler(InvalidCredentialsException.class)
