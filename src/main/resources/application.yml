@@ -24,3 +24,5 @@ management:
 
 app:
   issuer-uri: http://localhost:${APP_PORT}
+  mfa:
+    encryption-key: ${MFA_ENCRYPTION_KEY}

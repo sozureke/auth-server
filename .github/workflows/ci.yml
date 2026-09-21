@@ -42,4 +42,5 @@ jobs:
           DB_PASSWORD: ci_test_password
           DB_PORT: 5432
           APP_PORT: 8080
+          MFA_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
         run: ./mvnw test
