@@ -1,12 +1,17 @@
 package com.sozureke.auth_server.mfa;
 
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.sozureke.auth_server.auth.AuthUserDetails;
+import com.sozureke.auth_server.auth.exception.InvalidCredentialsException;
 import com.sozureke.auth_server.config.GlobalExceptionHandler;
 import com.sozureke.auth_server.user.User;
 import java.util.List;
@@ -86,5 +91,54 @@ class MfaControllerTest {
         .andExpect(status().isConflict())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.message").value("MFA is already enabled"));
+  }
+
+  @Test
+  void disable_returnsOk_whenPasswordCorrect() throws Exception {
+    doNothing().when(mfaService).disable(user, "CorrectHorse1!");
+
+    mockMvc
+        .perform(
+            post("/auth/mfa/disable")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"password\":\"CorrectHorse1!\"}"))
+        .andExpect(status().isOk());
+
+    verify(mfaService).disable(user, "CorrectHorse1!");
+  }
+
+  @Test
+  void disable_returnsUnauthorized_whenPasswordWrong() throws Exception {
+    doThrow(new InvalidCredentialsException()).when(mfaService).disable(user, "WrongPassword1!");
+
+    mockMvc
+        .perform(
+            post("/auth/mfa/disable")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"password\":\"WrongPassword1!\"}"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.message").value("Invalid email or password"));
+  }
+
+  @Test
+  void disable_returnsConflict_whenMfaNotEnabled() throws Exception {
+    doThrow(new MfaNotStartedException()).when(mfaService).disable(user, "CorrectHorse1!");
+
+    mockMvc
+        .perform(
+            post("/auth/mfa/disable")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"password\":\"CorrectHorse1!\"}"))
+        .andExpect(status().isConflict());
+  }
+
+  @Test
+  void disable_rejectsBlankPassword() throws Exception {
+    mockMvc
+        .perform(
+            post("/auth/mfa/disable")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"password\":\"\"}"))
+        .andExpect(status().isBadRequest());
   }
 }

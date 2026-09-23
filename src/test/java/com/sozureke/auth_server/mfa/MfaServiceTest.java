@@ -3,10 +3,13 @@ package com.sozureke.auth_server.mfa;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.sozureke.auth_server.auth.exception.InvalidCredentialsException;
+import com.sozureke.auth_server.mfa.dto.BackupCodesResponse;
 import com.sozureke.auth_server.mfa.dto.MfaEnrollmentResponse;
 import com.sozureke.auth_server.user.User;
 import com.sozureke.auth_server.user.UserRepository;
@@ -16,12 +19,15 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import org.apache.commons.codec.binary.Base32;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class MfaServiceTest {
@@ -33,8 +39,10 @@ class MfaServiceTest {
   private static final String CODE_NOW = "005924";
 
   @Mock private UserRepository userRepository;
+  @Mock private BackupCodeRepository backupCodeRepository;
 
   private MfaSecretCipher cipher;
+  private PasswordEncoder passwordEncoder;
   private MfaService service;
 
   @BeforeEach
@@ -42,11 +50,25 @@ class MfaServiceTest {
     byte[] key = new byte[32];
     Arrays.fill(key, (byte) 7);
     cipher = new MfaSecretCipher(Base64.getEncoder().encodeToString(key));
+    passwordEncoder = new BCryptPasswordEncoder(4); // low cost factor: tests only
 
     Clock clock = Clock.fixed(Instant.ofEpochSecond(NOW), ZoneOffset.UTC);
     service =
         new MfaService(
-            userRepository, new TotpService(clock), cipher, new QrCodeGenerator(), "Test Issuer");
+            userRepository,
+            new TotpService(clock),
+            cipher,
+            new QrCodeGenerator(),
+            backupCodeRepository,
+            new BackupCodeGenerator(),
+            passwordEncoder,
+            "Test Issuer");
+  }
+
+  private BackupCode backupCodeEntity(long id, String plainCode) {
+    BackupCode entity = new BackupCode(1L, passwordEncoder.encode(plainCode));
+    entity.setId(id);
+    return entity;
   }
 
   private User userWithPendingSecret() {
@@ -120,6 +142,19 @@ class MfaServiceTest {
     assertThat(user.isMfaEnabled()).isTrue();
     verify(userRepository).advanceMfaInterval(1L, NOW_INTERVAL);
     verify(userRepository).save(user);
+  }
+
+  @Test
+  void confirmEnrollment_returnsTenUniqueBackupCodes_andReplacesAnyPriorOnes() {
+    User user = userWithPendingSecret();
+    when(userRepository.advanceMfaInterval(1L, NOW_INTERVAL)).thenReturn(1);
+
+    BackupCodesResponse response = service.confirmEnrollment(user, CODE_NOW);
+
+    assertThat(response.backupCodes()).hasSize(10);
+    assertThat(response.backupCodes()).doesNotHaveDuplicates();
+    verify(backupCodeRepository).deleteByUserId(1L);
+    verify(backupCodeRepository).saveAll(argThat((List<BackupCode> saved) -> saved.size() == 10));
   }
 
   @Test
@@ -263,5 +298,105 @@ class MfaServiceTest {
 
     assertThatThrownBy(() -> service.pendingEnrollmentQr(user))
         .isInstanceOf(MfaAlreadyEnabledException.class);
+  }
+
+  // --- verifyLoginCode (TOTP + backup code fallback)
+  // -------------------------------------------
+
+  private User enabledUser() {
+    User user = userWithPendingSecret();
+    user.setMfaEnabled(true);
+    return user;
+  }
+
+  @Test
+  void verifyLoginCode_acceptsTotpCode_andConsumesTheInterval() {
+    User user = enabledUser();
+    when(userRepository.advanceMfaInterval(1L, NOW_INTERVAL)).thenReturn(1);
+
+    assertThat(service.verifyLoginCode(user, CODE_NOW)).isTrue();
+    verify(userRepository).advanceMfaInterval(1L, NOW_INTERVAL);
+    verify(backupCodeRepository, never()).findByUserIdAndUsedFalse(anyLong());
+  }
+
+  @Test
+  void verifyLoginCode_fallsBackToBackupCode_whenTotpDoesNotMatch() {
+    User user = enabledUser();
+    BackupCode stored = backupCodeEntity(7L, "ABCD-EFGH");
+    when(backupCodeRepository.findByUserIdAndUsedFalse(1L)).thenReturn(List.of(stored));
+    when(backupCodeRepository.markUsed(7L)).thenReturn(1);
+
+    assertThat(service.verifyLoginCode(user, "ABCD-EFGH")).isTrue();
+    verify(backupCodeRepository).markUsed(7L);
+  }
+
+  @Test
+  void verifyLoginCode_backupCodeIsSingleUse_soASecondAttemptFails() {
+    User user = enabledUser();
+    BackupCode stored = backupCodeEntity(7L, "ABCD-EFGH");
+    when(backupCodeRepository.findByUserIdAndUsedFalse(1L)).thenReturn(List.of(stored));
+    when(backupCodeRepository.markUsed(7L)).thenReturn(0); // already consumed
+
+    assertThat(service.verifyLoginCode(user, "ABCD-EFGH")).isFalse();
+  }
+
+  @Test
+  void verifyLoginCode_rejectsUnknownBackupCode() {
+    User user = enabledUser();
+    when(backupCodeRepository.findByUserIdAndUsedFalse(1L))
+        .thenReturn(List.of(backupCodeEntity(7L, "ABCD-EFGH")));
+
+    assertThat(service.verifyLoginCode(user, "ZZZZ-ZZZZ")).isFalse();
+    verify(backupCodeRepository, never()).markUsed(anyLong());
+  }
+
+  @Test
+  void verifyLoginCode_returnsFalse_whenMfaNotEnabled() {
+    User user = userWithPendingSecret();
+
+    assertThat(service.verifyLoginCode(user, CODE_NOW)).isFalse();
+    verify(backupCodeRepository, never()).findByUserIdAndUsedFalse(anyLong());
+  }
+
+  // --- disable
+  // ----------------------------------------------------------------------------------
+
+  private User enabledUserWithPassword(String rawPassword) {
+    User user = enabledUser();
+    user.setPasswordHash(passwordEncoder.encode(rawPassword));
+    return user;
+  }
+
+  @Test
+  void disable_turnsOffMfa_clearsSecretAndBackupCodes_whenPasswordCorrect() {
+    User user = enabledUserWithPassword("CorrectHorse1!");
+
+    service.disable(user, "CorrectHorse1!");
+
+    assertThat(user.isMfaEnabled()).isFalse();
+    assertThat(user.getTotpSecret()).isNull();
+    verify(userRepository).save(user);
+    verify(backupCodeRepository).deleteByUserId(1L);
+  }
+
+  @Test
+  void disable_rejectsWrongPassword_withoutTurningMfaOff() {
+    User user = enabledUserWithPassword("CorrectHorse1!");
+
+    assertThatThrownBy(() -> service.disable(user, "WrongPassword1!"))
+        .isInstanceOf(InvalidCredentialsException.class);
+
+    assertThat(user.isMfaEnabled()).isTrue();
+    verify(userRepository, never()).save(user);
+    verify(backupCodeRepository, never()).deleteByUserId(anyLong());
+  }
+
+  @Test
+  void disable_throwsNotStarted_whenMfaNotEnabled() {
+    User user = new User("alice@example.com", "hash");
+
+    assertThatThrownBy(() -> service.disable(user, "anything"))
+        .isInstanceOf(MfaNotStartedException.class);
+    verify(userRepository, never()).save(user);
   }
 }

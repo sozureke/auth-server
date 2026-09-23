@@ -1,7 +1,9 @@
 package com.sozureke.auth_server.mfa;
 
 import com.sozureke.auth_server.auth.AuthUserDetails;
+import com.sozureke.auth_server.mfa.dto.BackupCodesResponse;
 import com.sozureke.auth_server.mfa.dto.MfaCodeRequest;
+import com.sozureke.auth_server.mfa.dto.MfaDisableRequest;
 import com.sozureke.auth_server.mfa.dto.MfaEnrollmentResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
@@ -36,10 +38,17 @@ public class MfaController {
   }
 
   @PostMapping("/verify-setup")
-  public ResponseEntity<Void> verifySetup(
+  public ResponseEntity<BackupCodesResponse> verifySetup(
       @AuthenticationPrincipal AuthUserDetails principal,
       @Valid @RequestBody MfaCodeRequest request) {
-    mfaService.confirmEnrollment(principal.getUser(), request.code());
+    return ResponseEntity.ok(mfaService.confirmEnrollment(principal.getUser(), request.code()));
+  }
+
+  @PostMapping("/disable")
+  public ResponseEntity<Void> disable(
+      @AuthenticationPrincipal AuthUserDetails principal,
+      @Valid @RequestBody MfaDisableRequest request) {
+    mfaService.disable(principal.getUser(), request.password());
     return ResponseEntity.ok().build();
   }
 }
