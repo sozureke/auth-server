@@ -37,7 +37,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"StrongPassword123!\"\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
     },
     {
       "_id": "req_verify",
@@ -46,7 +51,12 @@
       "name": "Verify Email",
       "method": "GET",
       "url": "{{ _.base_url }}/auth/verify",
-      "parameters": [{ "name": "token", "value": "" }]
+      "parameters": [
+        {
+          "name": "token",
+          "value": ""
+        }
+      ]
     },
     {
       "_id": "req_login",
@@ -59,7 +69,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"StrongPassword123!\"\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
     },
     {
       "_id": "req_change_password",
@@ -72,7 +87,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"user@example.com\",\n  \"currentPassword\": \"StrongPassword123!\",\n  \"newPassword\": \"EvenStrongerPassword456!\"\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
     },
     {
       "_id": "req_password_reset_request",
@@ -85,7 +105,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"user@example.com\"\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
     },
     {
       "_id": "req_password_reset",
@@ -98,7 +123,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"token\": \"\",\n  \"newPassword\": \"EvenStrongerPassword456!\"\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
     },
     {
       "_id": "req_me_get",
@@ -129,7 +159,94 @@
         "mimeType": "application/json",
         "text": "{\n  \"currentPassword\": \"StrongPassword123!\",\n  \"newEmail\": \"new-user@example.com\"\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
+    },
+    {
+      "_id": "fld_mfa",
+      "_type": "request_group",
+      "parentId": "wrk_auth_server",
+      "name": "MFA"
+    },
+    {
+      "_id": "req_mfa_enable",
+      "_type": "request",
+      "parentId": "fld_mfa",
+      "name": "1. Enable MFA (start enrollment)",
+      "description": "Basic Auth, like the rest of the API. Returns otpauthUri, manualEntryKey (Base32, for typing into an authenticator app by hand) and qrCodeDataUri (a PNG QR code as a data: URI, ready for an <img src>). To SEE the QR while testing in Insomnia use step 1b (GET /auth/mfa/qr) — Insomnia does not render data: URIs inside JSON. The secret is stored encrypted and stays pending — MFA is NOT active until step 2 succeeds. Calling this again while pending generates a NEW secret (the old QR stops working); once MFA is enabled it returns 409.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/mfa/enable",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_mfa_qr",
+      "_type": "request",
+      "parentId": "fld_mfa",
+      "name": "1b. QR code (image/png, pending enrollment)",
+      "description": "Returns the QR code of the enrollment started in step 1 as a PNG — Insomnia shows it directly in the response panel, so you can scan it with an authenticator app from the screen. Does NOT generate a new secret (step 1 does). 409 if enrollment was not started or MFA is already enabled — the secret is never shown again after activation.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/auth/mfa/qr",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_mfa_verify_setup",
+      "_type": "request",
+      "parentId": "fld_mfa",
+      "name": "2. Verify setup (confirm first TOTP code)",
+      "description": "Enter the current 6-digit code from the authenticator app. 200 = MFA is now active, response body has backupCodes (10 one-time codes, XXXX-XXXX format) — shown here once, never retrievable again, save them now. 400 = wrong/malformed code, 409 = enrollment not started (call step 1) or MFA already enabled. A code is single-use: it cannot be replayed.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/mfa/verify-setup",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"code\": \"\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
+    },
+    {
+      "_id": "req_mfa_disable",
+      "_type": "request",
+      "parentId": "fld_mfa",
+      "name": "3. Disable MFA (requires password confirmation)",
+      "description": "Basic Auth. Requires the account password (not a TOTP/backup code) as extra confirmation for this destructive action. 200 = MFA turned off, totp_secret cleared, all backup codes deleted. 401 = wrong password (nothing changed). 409 = MFA wasn't enabled to begin with.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/mfa/disable",
+      "authentication": {
+        "type": "basic",
+        "username": "user@example.com",
+        "password": "StrongPassword123!"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"password\": \"StrongPassword123!\"\n}"
+      }
     },
     {
       "_id": "fld_oauth",
@@ -153,7 +270,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"clientId\": \"demo-client\",\n  \"clientName\": \"Demo Client\",\n  \"redirectUris\": [\"http://localhost:8081/callback\"],\n  \"scopes\": [\"openid\", \"profile\"]\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }]
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
     },
     {
       "_id": "req_login_page",
@@ -163,7 +285,12 @@
       "description": "First step of the Authorization Code flow. /oauth2/authorize uses formLogin() + session, not Basic Auth (Basic doesn't work here — OAuth2AuthorizationEndpointFilter runs before BasicAuthenticationFilter in the chain, see TODO.md 3.3 note). Hit this first, copy the _csrf hidden input value from the HTML response into the next request's body.",
       "method": "GET",
       "url": "{{ _.base_url }}/login",
-      "headers": [{ "name": "Accept", "value": "text/html" }]
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "text/html"
+        }
+      ]
     },
     {
       "_id": "req_login_submit",
@@ -174,15 +301,30 @@
       "method": "POST",
       "url": "{{ _.base_url }}/login",
       "headers": [
-        { "name": "Content-Type", "value": "application/x-www-form-urlencoded" },
-        { "name": "Accept", "value": "text/html" }
+        {
+          "name": "Content-Type",
+          "value": "application/x-www-form-urlencoded"
+        },
+        {
+          "name": "Accept",
+          "value": "text/html"
+        }
       ],
       "body": {
         "mimeType": "application/x-www-form-urlencoded",
         "params": [
-          { "name": "username", "value": "user@example.com" },
-          { "name": "password", "value": "StrongPassword123!" },
-          { "name": "_csrf", "value": "" }
+          {
+            "name": "username",
+            "value": "user@example.com"
+          },
+          {
+            "name": "password",
+            "value": "StrongPassword123!"
+          },
+          {
+            "name": "_csrf",
+            "value": ""
+          }
         ]
       }
     },
@@ -191,19 +333,92 @@
       "_type": "request",
       "parentId": "fld_oauth",
       "name": "3. Authorize (Authorization Code + PKCE)",
-      "description": "Requires an active session from steps 1-2 (Insomnia cookie jar handles this automatically). No Basic Auth here — see note on step 1. code_challenge must be a real PKCE S256 challenge derived from a code_verifier you keep for the token exchange step.",
+      "description": "Requires an active session from steps 1-2 (Insomnia cookie jar handles this automatically). No Basic Auth here — see note on step 1. code_challenge must be a real PKCE S256 challenge derived from a code_verifier you keep for the token exchange step. If the authenticated account has ADMIN role: this now requires a verified TOTP session too (Phase 4.3). Not enrolled -> 403 JSON \"MFA enrollment is required for admin accounts\". Enrolled but not verified this session -> 302 redirect to /login/totp, see steps 3b/3c.",
       "method": "GET",
       "url": "{{ _.base_url }}/oauth2/authorize",
-      "headers": [{ "name": "Accept", "value": "text/html" }],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "text/html"
+        }
+      ],
       "parameters": [
-        { "name": "response_type", "value": "code" },
-        { "name": "client_id", "value": "demo-client" },
-        { "name": "redirect_uri", "value": "http://localhost:8081/callback" },
-        { "name": "scope", "value": "openid profile" },
-        { "name": "code_challenge", "value": "" },
-        { "name": "code_challenge_method", "value": "S256" },
-        { "name": "state", "value": "xyz" }
+        {
+          "name": "response_type",
+          "value": "code"
+        },
+        {
+          "name": "client_id",
+          "value": "demo-client"
+        },
+        {
+          "name": "redirect_uri",
+          "value": "http://localhost:8081/callback"
+        },
+        {
+          "name": "scope",
+          "value": "openid profile"
+        },
+        {
+          "name": "code_challenge",
+          "value": ""
+        },
+        {
+          "name": "code_challenge_method",
+          "value": "S256"
+        },
+        {
+          "name": "state",
+          "value": "xyz"
+        }
       ]
+    },
+    {
+      "_id": "req_login_totp_form",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "3b. GET /login/totp (ADMIN + MFA enabled only)",
+      "description": "Only reached if step 3 redirected here: the authenticated account is ADMIN, has MFA enrolled (see MFA folder), but this session hasn't verified a TOTP code yet. Copy the _csrf hidden input value into step 3c. Insomnia's cookie jar carries the same session.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/login/totp",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "text/html"
+        }
+      ]
+    },
+    {
+      "_id": "req_login_totp_submit",
+      "_type": "request",
+      "parentId": "fld_oauth",
+      "name": "3c. POST /login/totp (submit TOTP or backup code)",
+      "description": "code accepts either the 6-digit TOTP from the authenticator app, or one of the 10 backup codes (XXXX-XXXX) returned once by verify-setup — MfaService tries TOTP first, then falls back to backup codes. On success (302), the session is marked MFA-verified and re-running step 3 proceeds past the gate to the authorization code. A backup code is single-use (atomic, race-safe) — reusing it re-renders this form (200) with an error, same as a wrong/expired TOTP code.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/login/totp",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/x-www-form-urlencoded"
+        },
+        {
+          "name": "Accept",
+          "value": "text/html"
+        }
+      ],
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          {
+            "name": "code",
+            "value": ""
+          },
+          {
+            "name": "_csrf",
+            "value": ""
+          }
+        ]
+      }
     },
     {
       "_id": "req_oauth_token",
@@ -221,10 +436,22 @@
       "body": {
         "mimeType": "application/x-www-form-urlencoded",
         "params": [
-          { "name": "grant_type", "value": "authorization_code" },
-          { "name": "code", "value": "" },
-          { "name": "redirect_uri", "value": "http://localhost:8081/callback" },
-          { "name": "code_verifier", "value": "" }
+          {
+            "name": "grant_type",
+            "value": "authorization_code"
+          },
+          {
+            "name": "code",
+            "value": ""
+          },
+          {
+            "name": "redirect_uri",
+            "value": "http://localhost:8081/callback"
+          },
+          {
+            "name": "code_verifier",
+            "value": ""
+          }
         ]
       }
     },
@@ -244,8 +471,14 @@
       "body": {
         "mimeType": "application/x-www-form-urlencoded",
         "params": [
-          { "name": "grant_type", "value": "refresh_token" },
-          { "name": "refresh_token", "value": "" }
+          {
+            "name": "grant_type",
+            "value": "refresh_token"
+          },
+          {
+            "name": "refresh_token",
+            "value": ""
+          }
         ]
       }
     },
@@ -263,7 +496,12 @@
       },
       "body": {
         "mimeType": "application/x-www-form-urlencoded",
-        "params": [{ "name": "token", "value": "" }]
+        "params": [
+          {
+            "name": "token",
+            "value": ""
+          }
+        ]
       }
     },
     {
@@ -280,7 +518,12 @@
       },
       "body": {
         "mimeType": "application/x-www-form-urlencoded",
-        "params": [{ "name": "token", "value": "" }]
+        "params": [
+          {
+            "name": "token",
+            "value": ""
+          }
+        ]
       }
     },
     {

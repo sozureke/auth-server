@@ -60,6 +60,15 @@ public class User {
       inverseJoinColumns = @JoinColumn(name = "role_id"))
   private Set<Role> roles = new HashSet<>();
 
+  @Column(name = "mfa_enabled", nullable = false)
+  private boolean mfaEnabled = false;
+
+  @Column(name = "totp_secret")
+  private String totpSecret;
+
+  @Column(name = "mfa_last_used_interval", nullable = false, insertable = false, updatable = false)
+  private long mfaLastUsedInterval;
+
   public User(String email, String passwordHash) {
     this.email = email;
     this.passwordHash = passwordHash;
