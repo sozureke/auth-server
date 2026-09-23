@@ -6,6 +6,8 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.sozureke.auth_server.auth.AuthUserDetails;
+import com.sozureke.auth_server.mfa.MfaAccessDeniedHandler;
+import com.sozureke.auth_server.mfa.MfaVerificationRequiredAuthorizationManager;
 import com.sozureke.auth_server.role.Permission;
 import com.sozureke.auth_server.role.Role;
 import com.sozureke.auth_server.user.User;
@@ -21,6 +23,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authorization.AuthenticatedAuthorizationManager;
+import org.springframework.security.authorization.AuthorizationManagers;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
@@ -32,28 +36,53 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
+import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 public class AuthorizationServerConfig {
 
   @Bean
+  public RequestCache requestCache() {
+    return new HttpSessionRequestCache();
+  }
+
+  @Bean
   @Order(1)
-  public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http)
-      throws Exception {
+  public SecurityFilterChain authorizationServerSecurityFilterChain(
+      HttpSecurity http, RequestCache requestCache, ObjectMapper objectMapper) throws Exception {
     OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
         new OAuth2AuthorizationServerConfigurer();
 
+    RequestMatcher authorizeEndpointMatcher =
+        PathPatternRequestMatcher.pathPattern("/oauth2/authorize");
     RequestMatcher matcher =
         new OrRequestMatcher(
             authorizationServerConfigurer.getEndpointsMatcher(),
-            PathPatternRequestMatcher.pathPattern("/login"));
+            PathPatternRequestMatcher.pathPattern("/login"),
+            PathPatternRequestMatcher.pathPattern("/login/totp"));
 
     http.securityMatcher(matcher)
         .with(authorizationServerConfigurer, (server) -> server.oidc(Customizer.withDefaults()))
-        .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
+        .authorizeHttpRequests(
+            authorize ->
+                authorize
+                    .requestMatchers(authorizeEndpointMatcher)
+                    .access(
+                        AuthorizationManagers.allOf(
+                            AuthenticatedAuthorizationManager.authenticated(),
+                            new MfaVerificationRequiredAuthorizationManager()))
+                    .anyRequest()
+                    .authenticated())
+        .exceptionHandling(
+            exceptions ->
+                exceptions.defaultAccessDeniedHandlerFor(
+                    new MfaAccessDeniedHandler(requestCache, objectMapper),
+                    authorizeEndpointMatcher))
         .formLogin(Customizer.withDefaults());
 
     return http.build();
