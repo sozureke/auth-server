@@ -19,7 +19,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r CROSS JOIN permissions p
 WHERE p.name = 'AUDIT_READ' AND r.name IN ('ADMIN', 'AUDITOR');
 
-REVOKE UPDATE, DELETE, TRUNCATE ON audit_log FROM authuser;
+REVOKE UPDATE, DELETE, TRUNCATE ON audit_log FROM ${app_db_user};
 
 CREATE ROLE audit_admin;
 GRANT DELETE ON audit_log TO audit_admin;
