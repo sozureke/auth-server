@@ -5,6 +5,10 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.sozureke.auth_server.audit.AuditEventType;
+import com.sozureke.auth_server.audit.AuditService;
+import com.sozureke.auth_server.audit.AuditingLogoutSuccessHandler;
+import com.sozureke.auth_server.audit.AuditingTokenRevocationSuccessHandler;
 import com.sozureke.auth_server.auth.AuthUserDetails;
 import com.sozureke.auth_server.mfa.MfaAccessDeniedHandler;
 import com.sozureke.auth_server.mfa.MfaVerificationRequiredAuthorizationManager;
@@ -17,6 +21,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -55,7 +60,11 @@ public class AuthorizationServerConfig {
   @Bean
   @Order(1)
   public SecurityFilterChain authorizationServerSecurityFilterChain(
-      HttpSecurity http, RequestCache requestCache, ObjectMapper objectMapper) throws Exception {
+      HttpSecurity http,
+      RequestCache requestCache,
+      ObjectMapper objectMapper,
+      AuditService auditService)
+      throws Exception {
     OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
         new OAuth2AuthorizationServerConfigurer();
 
@@ -71,7 +80,15 @@ public class AuthorizationServerConfig {
             PathPatternRequestMatcher.pathPattern("/logout"));
 
     http.securityMatcher(matcher)
-        .with(authorizationServerConfigurer, (server) -> server.oidc(Customizer.withDefaults()))
+        .with(
+            authorizationServerConfigurer,
+            (server) ->
+                server
+                    .oidc(Customizer.withDefaults())
+                    .tokenRevocationEndpoint(
+                        revocation ->
+                            revocation.revocationResponseHandler(
+                                new AuditingTokenRevocationSuccessHandler(auditService))))
         .authorizeHttpRequests(
             authorize ->
                 authorize
@@ -94,7 +111,7 @@ public class AuthorizationServerConfig {
             logout ->
                 logout
                     .logoutUrl("/logout")
-                    .logoutSuccessUrl("/login?logout")
+                    .logoutSuccessHandler(new AuditingLogoutSuccessHandler(auditService))
                     .invalidateHttpSession(true)
                     .deleteCookies("SESSION"));
 
@@ -136,7 +153,7 @@ public class AuthorizationServerConfig {
   }
 
   @Bean
-  public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
+  public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(AuditService auditService) {
     return context -> {
       if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
         return;
@@ -154,6 +171,14 @@ public class AuthorizationServerConfig {
                 .collect(Collectors.toSet());
 
         context.getClaims().claim("roles", roles).claim("permissions", permissions);
+
+        String clientId = context.getRegisteredClient().getClientId();
+        auditService.log(
+            user.getId(),
+            AuditEventType.TOKEN_ISSUED,
+            "client",
+            clientId,
+            Map.of("scopes", context.getAuthorizedScopes()));
       }
     };
   }
