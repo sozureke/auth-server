@@ -10,6 +10,7 @@ import com.sozureke.auth_server.mfa.MfaAccessDeniedHandler;
 import com.sozureke.auth_server.mfa.MfaVerificationRequiredAuthorizationManager;
 import com.sozureke.auth_server.role.Permission;
 import com.sozureke.auth_server.role.Role;
+import com.sozureke.auth_server.session.SessionMetadataAuthenticationSuccessHandler;
 import com.sozureke.auth_server.user.User;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -64,7 +65,10 @@ public class AuthorizationServerConfig {
         new OrRequestMatcher(
             authorizationServerConfigurer.getEndpointsMatcher(),
             PathPatternRequestMatcher.pathPattern("/login"),
-            PathPatternRequestMatcher.pathPattern("/login/totp"));
+            PathPatternRequestMatcher.pathPattern("/login/totp"),
+            PathPatternRequestMatcher.pathPattern("/auth/sessions"),
+            PathPatternRequestMatcher.pathPattern("/auth/sessions/*"),
+            PathPatternRequestMatcher.pathPattern("/logout"));
 
     http.securityMatcher(matcher)
         .with(authorizationServerConfigurer, (server) -> server.oidc(Customizer.withDefaults()))
@@ -83,7 +87,16 @@ public class AuthorizationServerConfig {
                 exceptions.defaultAccessDeniedHandlerFor(
                     new MfaAccessDeniedHandler(requestCache, objectMapper),
                     authorizeEndpointMatcher))
-        .formLogin(Customizer.withDefaults());
+        .formLogin(
+            form ->
+                form.successHandler(new SessionMetadataAuthenticationSuccessHandler(requestCache)))
+        .logout(
+            logout ->
+                logout
+                    .logoutUrl("/logout")
+                    .logoutSuccessUrl("/login?logout")
+                    .invalidateHttpSession(true)
+                    .deleteCookies("SESSION"));
 
     return http.build();
   }

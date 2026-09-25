@@ -1,5 +1,6 @@
 package com.sozureke.auth_server.user;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.sozureke.auth_server.role.Role;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -58,6 +59,7 @@ public class User {
       name = "user_roles",
       joinColumns = @JoinColumn(name = "user_id"),
       inverseJoinColumns = @JoinColumn(name = "role_id"))
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NONE)
   private Set<Role> roles = new HashSet<>();
 
   @Column(name = "mfa_enabled", nullable = false)

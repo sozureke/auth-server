@@ -1,5 +1,6 @@
 package com.sozureke.auth_server.role;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
@@ -26,6 +27,7 @@ public class Role {
       name = "role_permissions",
       joinColumns = @JoinColumn(name = "role_id"),
       inverseJoinColumns = @JoinColumn(name = "permission_id"))
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NONE)
   private Set<Permission> permissions = new HashSet<>();
 
   public Role(String name) {
