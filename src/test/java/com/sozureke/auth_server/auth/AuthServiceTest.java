@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.sozureke.auth_server.audit.AuditService;
 import com.sozureke.auth_server.auth.exception.AccountDisabledException;
 import com.sozureke.auth_server.auth.exception.AccountLockedException;
 import com.sozureke.auth_server.auth.exception.EmailNotVerifiedException;
@@ -36,16 +37,18 @@ class AuthServiceTest {
 
   @Mock private UserRepository userRepository;
   @Mock private PasswordEncoder passwordEncoder;
+  @Mock private AuditService auditService;
 
   private AuthService authService;
 
   @BeforeEach
   void setUp() {
-    authService = new AuthService(userRepository, passwordEncoder);
+    authService = new AuthService(userRepository, passwordEncoder, auditService);
   }
 
   private User verifiedEnabledUser() {
     User user = new User(EMAIL, PASSWORD_HASH);
+    user.setId(1L); // a user loaded via findByEmail always has a real, already-assigned DB id
     user.setEmailVerified(true);
     user.setEnabled(true);
     return user;
@@ -103,6 +106,7 @@ class AuthServiceTest {
   @Test
   void login_throwsEmailNotVerified_whenPasswordCorrectButNotVerified() {
     User user = new User(EMAIL, PASSWORD_HASH);
+    user.setId(1L);
     user.setEmailVerified(false);
     user.setEnabled(true);
     when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
@@ -115,6 +119,7 @@ class AuthServiceTest {
   @Test
   void login_throwsAccountDisabled_whenVerifiedButDisabled() {
     User user = new User(EMAIL, PASSWORD_HASH);
+    user.setId(1L);
     user.setEmailVerified(true);
     user.setEnabled(false);
     when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));

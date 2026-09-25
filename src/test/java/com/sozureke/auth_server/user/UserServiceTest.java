@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.sozureke.auth_server.audit.AuditService;
 import com.sozureke.auth_server.config.InvalidVerificationTokenException;
 import com.sozureke.auth_server.role.Role;
 import com.sozureke.auth_server.role.RoleRepository;
@@ -27,12 +28,13 @@ class UserServiceTest {
   @Mock private UserRepository userRepository;
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private RoleRepository roleRepository;
+  @Mock private AuditService auditService;
 
   private UserService userService;
 
   @BeforeEach
   void setUp() {
-    userService = new UserService(userRepository, passwordEncoder, roleRepository);
+    userService = new UserService(userRepository, passwordEncoder, roleRepository, auditService);
   }
 
   @Test
@@ -50,7 +52,13 @@ class UserServiceTest {
     when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
     when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(PASSWORD_HASH);
     when(roleRepository.findByName("USER")).thenReturn(Optional.of(new Role("USER")));
-    when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(userRepository.save(any(User.class)))
+        .thenAnswer(
+            invocation -> {
+              User user = invocation.getArgument(0);
+              user.setId(1L); // mimic Hibernate populating the IDENTITY id on insert
+              return user;
+            });
 
     User savedUser = userService.register(EMAIL, RAW_PASSWORD);
 

@@ -6,11 +6,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.sozureke.auth_server.audit.AuditService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,12 @@ class UserControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private UserRepository userRepository;
+
+  // AuditService writes in its own REQUIRES_NEW transaction (audit rows must survive a rollback
+  // of the caller's transaction), which can't see this test's own uncommitted, rolled-back-at-end
+  // User row. Mocked here for that reason — audit call behavior is covered by the service-level
+  // unit tests instead.
+  @MockitoBean private AuditService auditService;
 
   @Test
   void register_returnsCreatedUser_withUnverifiedEmail() throws Exception {

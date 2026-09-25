@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.sozureke.auth_server.audit.AuditService;
 import com.sozureke.auth_server.auth.exception.InvalidCredentialsException;
 import com.sozureke.auth_server.mfa.dto.BackupCodesResponse;
 import com.sozureke.auth_server.mfa.dto.MfaEnrollmentResponse;
@@ -40,6 +41,7 @@ class MfaServiceTest {
 
   @Mock private UserRepository userRepository;
   @Mock private BackupCodeRepository backupCodeRepository;
+  @Mock private AuditService auditService;
 
   private MfaSecretCipher cipher;
   private PasswordEncoder passwordEncoder;
@@ -62,6 +64,7 @@ class MfaServiceTest {
             backupCodeRepository,
             new BackupCodeGenerator(),
             passwordEncoder,
+            auditService,
             "Test Issuer");
   }
 
