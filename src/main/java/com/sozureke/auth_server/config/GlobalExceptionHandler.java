@@ -8,6 +8,7 @@ import com.sozureke.auth_server.auth.exception.InvalidResetTokenException;
 import com.sozureke.auth_server.mfa.InvalidMfaCodeException;
 import com.sozureke.auth_server.mfa.MfaAlreadyEnabledException;
 import com.sozureke.auth_server.mfa.MfaNotStartedException;
+import com.sozureke.auth_server.session.SessionNotFoundException;
 import com.sozureke.auth_server.user.EmailAlreadyExistsException;
 import java.util.HashMap;
 import java.util.Map;
@@ -89,9 +90,14 @@ public class GlobalExceptionHandler {
     for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
       fieldErrors.put(fieldError.getField(), fieldError.getDefaultMessage());
     }
-
     ApiError error = new ApiError(HttpStatus.BAD_REQUEST.value(), "Validation failed", fieldErrors);
 
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+  }
+
+  @ExceptionHandler(SessionNotFoundException.class)
+  public ResponseEntity<ApiError> handleSessionNotFoundException(SessionNotFoundException ex) {
+    ApiError error = new ApiError(HttpStatus.NOT_FOUND.value(), ex.getMessage(), null);
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
   }
 }
