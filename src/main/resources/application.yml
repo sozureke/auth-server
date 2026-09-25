@@ -20,6 +20,7 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
   session:
+    timeout: 15m
     data:
       redis:
         repository-type: indexed

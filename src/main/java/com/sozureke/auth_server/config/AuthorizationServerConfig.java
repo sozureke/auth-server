@@ -67,7 +67,8 @@ public class AuthorizationServerConfig {
             PathPatternRequestMatcher.pathPattern("/login"),
             PathPatternRequestMatcher.pathPattern("/login/totp"),
             PathPatternRequestMatcher.pathPattern("/auth/sessions"),
-            PathPatternRequestMatcher.pathPattern("/auth/sessions/*"));
+            PathPatternRequestMatcher.pathPattern("/auth/sessions/*"),
+            PathPatternRequestMatcher.pathPattern("/logout"));
 
     http.securityMatcher(matcher)
         .with(authorizationServerConfigurer, (server) -> server.oidc(Customizer.withDefaults()))
@@ -88,7 +89,14 @@ public class AuthorizationServerConfig {
                     authorizeEndpointMatcher))
         .formLogin(
             form ->
-                form.successHandler(new SessionMetadataAuthenticationSuccessHandler(requestCache)));
+                form.successHandler(new SessionMetadataAuthenticationSuccessHandler(requestCache)))
+        .logout(
+            logout ->
+                logout
+                    .logoutUrl("/logout")
+                    .logoutSuccessUrl("/login?logout")
+                    .invalidateHttpSession(true)
+                    .deleteCookies("SESSION"));
 
     return http.build();
   }
