@@ -1,5 +1,8 @@
 package com.sozureke.auth_server.config;
 
+import com.sozureke.auth_server.ratelimit.ApiRateLimitFilter;
+import com.sozureke.auth_server.ratelimit.RateLimitProperties;
+import com.sozureke.auth_server.ratelimit.RateLimiter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -9,6 +12,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 @EnableMethodSecurity
@@ -16,7 +21,12 @@ public class SecurityConfig {
 
   @Bean
   @Order(2)
-  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain securityFilterChain(
+      HttpSecurity http,
+      RateLimiter rateLimiter,
+      RateLimitProperties rateLimitProperties,
+      ObjectMapper objectMapper)
+      throws Exception {
     http.csrf(csrf -> csrf.disable())
         .authorizeHttpRequests(
             authorize ->
@@ -35,7 +45,10 @@ public class SecurityConfig {
                     .authenticated())
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .httpBasic(basic -> {});
+        .httpBasic(basic -> {})
+        .addFilterAfter(
+            new ApiRateLimitFilter(rateLimiter, rateLimitProperties, objectMapper),
+            BasicAuthenticationFilter.class);
 
     return http.build();
   }
