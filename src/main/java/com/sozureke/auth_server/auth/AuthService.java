@@ -1,5 +1,7 @@
 package com.sozureke.auth_server.auth;
 
+import com.sozureke.auth_server.audit.AuditEventType;
+import com.sozureke.auth_server.audit.AuditService;
 import com.sozureke.auth_server.auth.exception.AccountDisabledException;
 import com.sozureke.auth_server.auth.exception.AccountLockedException;
 import com.sozureke.auth_server.auth.exception.EmailNotVerifiedException;
@@ -10,6 +12,7 @@ import com.sozureke.auth_server.user.User;
 import com.sozureke.auth_server.user.UserRepository;
 import com.sozureke.auth_server.user.dto.UserResponse;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,21 +29,45 @@ public class AuthService {
 
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
+  private final AuditService auditService;
 
-  public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+  public AuthService(
+      UserRepository userRepository, PasswordEncoder passwordEncoder, AuditService auditService) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
+    this.auditService = auditService;
   }
 
   @Transactional
   public UserResponse login(String email, String rawPassword) {
-    User user = userRepository.findByEmail(email).orElseThrow(InvalidCredentialsException::new);
-    verifyCredentials(user, rawPassword);
+    User user = userRepository.findByEmail(email).orElse(null);
+    if (user == null) {
+      auditService.log(
+          null,
+          AuditEventType.LOGIN_FAILED,
+          "user",
+          null,
+          Map.of("email", email, "reason", "no_such_user"));
+      throw new InvalidCredentialsException();
+    }
+
+    try {
+      verifyCredentials(user, rawPassword);
+    } catch (RuntimeException e) {
+      auditService.log(
+          user.getId(),
+          AuditEventType.LOGIN_FAILED,
+          "user",
+          user.getId().toString(),
+          Map.of("email", email, "reason", e.getClass().getSimpleName()));
+      throw e;
+    }
 
     user.setFailedLoginAttempts(0);
     user.setLockedUntil(null);
     userRepository.save(user);
 
+    auditService.log(user.getId(), AuditEventType.LOGIN, "user", user.getId().toString(), null);
     return UserResponse.from(user);
   }
 
@@ -56,6 +83,12 @@ public class AuthService {
     user.setResetTokenExpiresAt(null);
     userRepository.save(user);
 
+    auditService.log(
+        user.getId(),
+        AuditEventType.PASSWORD_CHANGE,
+        "user",
+        user.getId().toString(),
+        Map.of("method", "change"));
     return UserResponse.from(user);
   }
 
@@ -90,6 +123,13 @@ public class AuthService {
     user.setFailedLoginAttempts(0);
     user.setLockedUntil(null);
     userRepository.save(user);
+
+    auditService.log(
+        user.getId(),
+        AuditEventType.PASSWORD_CHANGE,
+        "user",
+        user.getId().toString(),
+        Map.of("method", "reset"));
   }
 
   @Transactional

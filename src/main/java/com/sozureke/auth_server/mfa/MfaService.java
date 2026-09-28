@@ -1,5 +1,7 @@
 package com.sozureke.auth_server.mfa;
 
+import com.sozureke.auth_server.audit.AuditEventType;
+import com.sozureke.auth_server.audit.AuditService;
 import com.sozureke.auth_server.auth.exception.InvalidCredentialsException;
 import com.sozureke.auth_server.mfa.dto.BackupCodesResponse;
 import com.sozureke.auth_server.mfa.dto.MfaEnrollmentResponse;
@@ -25,6 +27,7 @@ public class MfaService {
   private final BackupCodeGenerator backupCodeGenerator;
   private final BackupCodeRepository backupCodeRepository;
   private final PasswordEncoder passwordEncoder;
+  private final AuditService auditService;
   private final String issuer;
 
   public MfaService(
@@ -35,6 +38,7 @@ public class MfaService {
       BackupCodeRepository backupCodeRepository,
       BackupCodeGenerator backupCodeGenerator,
       PasswordEncoder passwordEncoder,
+      AuditService auditService,
       @Value("${app.mfa.issuer:auth-server}") String issuer) {
     this.userRepository = userRepository;
     this.totpService = totpService;
@@ -44,6 +48,7 @@ public class MfaService {
     this.backupCodeGenerator = backupCodeGenerator;
     this.backupCodeRepository = backupCodeRepository;
     this.passwordEncoder = passwordEncoder;
+    this.auditService = auditService;
   }
 
   @Transactional
@@ -87,6 +92,8 @@ public class MfaService {
             .toList();
     backupCodeRepository.saveAll(entities);
 
+    auditService.log(
+        user.getId(), AuditEventType.MFA_ENABLE, "user", user.getId().toString(), null);
     return new BackupCodesResponse(plainCodes);
   }
 
@@ -128,6 +135,9 @@ public class MfaService {
     user.setTotpSecret(null);
     userRepository.save(user);
     backupCodeRepository.deleteByUserId(user.getId());
+
+    auditService.log(
+        user.getId(), AuditEventType.MFA_DISABLE, "user", user.getId().toString(), null);
   }
 
   private boolean verifyBackupCode(User user, String code) {
