@@ -9,6 +9,11 @@ services:
       - '${DB_PORT}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   redis:
     image: redis:7
@@ -16,6 +21,37 @@ services:
       - '${REDIS_PORT}:6379'
     volumes:
       - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    profiles: ['app']
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${APP_PROFILE:-prod}
+      APP_PORT: ${APP_PORT}
+      APP_ISSUER_URI: ${APP_ISSUER_URI:-http://localhost:${APP_PORT}}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127\.0\.0\.1|0:0:0:0:0:0:0:1|::1}
+    ports:
+      - '${APP_PORT}:${APP_PORT}'
+    stop_grace_period: 45s
+    restart: unless-stopped
 
 volumes:
   pgdata:
