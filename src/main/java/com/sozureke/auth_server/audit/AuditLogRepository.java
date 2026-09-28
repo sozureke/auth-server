@@ -11,16 +11,18 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
   @Query(
       """
-            SELECT a FROM AuditLog a
-            WHERE (CAST(:userId AS long) IS NULL OR a.userId = :userId)
-              AND (CAST(:action AS string) IS NULL OR a.action = :action)
-              AND (CAST(:from AS timestamp) IS NULL OR a.createdAt >= :from)
-              AND (CAST(:to AS timestamp) IS NULL OR a.createdAt <= :to)
-            """)
+      SELECT a FROM AuditLog a
+      WHERE (CAST(:userId AS long) IS NULL OR a.userId = :userId)
+        AND (CAST(:action AS string) IS NULL OR a.action = :action)
+        AND (CAST(:from AS timestamp) IS NULL OR a.createdAt >= :from)
+        AND (CAST(:to AS timestamp) IS NULL OR a.createdAt <= :to)
+      """)
   Page<AuditLog> search(
       @Param("userId") Long userId,
       @Param("action") String action,
       @Param("from") Instant from,
       @Param("to") Instant to,
       Pageable pageable);
+
+  long countByActionAndCreatedAtAfter(String action, Instant createdAt);
 }

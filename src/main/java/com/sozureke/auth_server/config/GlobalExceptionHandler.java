@@ -1,5 +1,9 @@
 package com.sozureke.auth_server.config;
 
+import com.sozureke.auth_server.admin.AdminActionNotAllowedException;
+import com.sozureke.auth_server.admin.ClientNotFoundException;
+import com.sozureke.auth_server.admin.InvalidSortException;
+import com.sozureke.auth_server.admin.UserNotFoundException;
 import com.sozureke.auth_server.auth.exception.AccountDisabledException;
 import com.sozureke.auth_server.auth.exception.AccountLockedException;
 import com.sozureke.auth_server.auth.exception.EmailNotVerifiedException;
@@ -97,6 +101,30 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(SessionNotFoundException.class)
   public ResponseEntity<ApiError> handleSessionNotFoundException(SessionNotFoundException ex) {
+    ApiError error = new ApiError(HttpStatus.NOT_FOUND.value(), ex.getMessage(), null);
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+  }
+
+  @ExceptionHandler(UserNotFoundException.class)
+  public ResponseEntity<ApiError> handleUserNotFound(UserNotFoundException ex) {
+    ApiError error = new ApiError(HttpStatus.NOT_FOUND.value(), ex.getMessage(), null);
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+  }
+
+  @ExceptionHandler(AdminActionNotAllowedException.class)
+  public ResponseEntity<ApiError> handleAdminActionNotAllowed(AdminActionNotAllowedException ex) {
+    ApiError error = new ApiError(HttpStatus.CONFLICT.value(), ex.getMessage(), null);
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+  }
+
+  @ExceptionHandler(InvalidSortException.class)
+  public ResponseEntity<ApiError> handleInvalidSort(InvalidSortException ex) {
+    ApiError error = new ApiError(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), null);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+  }
+
+  @ExceptionHandler(ClientNotFoundException.class)
+  public ResponseEntity<ApiError> handleClientNotFound(ClientNotFoundException ex) {
     ApiError error = new ApiError(HttpStatus.NOT_FOUND.value(), ex.getMessage(), null);
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
   }
