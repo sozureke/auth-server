@@ -2,6 +2,8 @@ package com.sozureke.auth_server.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.sozureke.auth_server.user.User;
+import com.sozureke.auth_server.user.UserRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -18,15 +20,25 @@ import org.springframework.transaction.annotation.Transactional;
 class AuditLogRepositoryTest {
 
   @Autowired private AuditLogRepository auditLogRepository;
+  @Autowired private UserRepository userRepository;
+
+  private Long userId;
+
+  // audit_log.user_id has a real FK to users(id): a hardcoded id only works on a dev DB that
+  // happens to contain that user, and breaks on a fresh CI database. Create the user instead.
+  @BeforeEach
+  void createUser() {
+    userId = userRepository.save(new User("audit-repo-it@example.com", "hash")).getId();
+  }
 
   @Test
   void save_roundTripsJsonbDetails() {
     AuditLog log =
         new AuditLog(
-            1L,
+            userId,
             AuditEventType.LOGIN_FAILED,
             "user",
-            "1",
+            userId.toString(),
             "127.0.0.1",
             "TestAgent/1.0",
             Map.of("reason", "wrong-password", "attempts", 3));
@@ -52,10 +64,13 @@ class AuditLogRepositoryTest {
 
   @BeforeEach
   void seedSearchFixtures() {
+    String entityId = userId.toString();
     auditLogRepository.save(
-        new AuditLog(1L, AuditEventType.LOGIN, "user", "1", "127.0.0.1", "TestAgent", null));
+        new AuditLog(
+            userId, AuditEventType.LOGIN, "user", entityId, "127.0.0.1", "TestAgent", null));
     auditLogRepository.save(
-        new AuditLog(1L, AuditEventType.LOGIN_FAILED, "user", "1", "127.0.0.1", "TestAgent", null));
+        new AuditLog(
+            userId, AuditEventType.LOGIN_FAILED, "user", entityId, "127.0.0.1", "TestAgent", null));
     auditLogRepository.flush();
   }
 
@@ -68,9 +83,11 @@ class AuditLogRepositoryTest {
 
   @Test
   void search_filtersByUserId() {
-    Page<AuditLog> page = auditLogRepository.search(1L, null, null, null, PageRequest.of(0, 10));
+    Page<AuditLog> page =
+        auditLogRepository.search(userId, null, null, null, PageRequest.of(0, 10));
 
-    assertThat(page.getContent()).allMatch(a -> a.getUserId().equals(1L));
+    assertThat(page.getContent()).hasSize(2);
+    assertThat(page.getContent()).allMatch(a -> a.getUserId().equals(userId));
   }
 
   @Test
@@ -78,6 +95,7 @@ class AuditLogRepositoryTest {
     Page<AuditLog> page =
         auditLogRepository.search(null, "LOGIN_FAILED", null, null, PageRequest.of(0, 10));
 
+    assertThat(page.getContent()).isNotEmpty();
     assertThat(page.getContent()).allMatch(a -> a.getAction().equals("LOGIN_FAILED"));
   }
 
@@ -98,7 +116,8 @@ class AuditLogRepositoryTest {
     Page<AuditLog> page =
         auditLogRepository.search(null, null, null, farPast, PageRequest.of(0, 10));
 
-    assertThat(page.getContent()).isEmpty();
+    assertThat(page.getContent()).allMatch(a -> !a.getCreatedAt().isAfter(farPast));
+    assertThat(page.getContent()).noneMatch(a -> userId.equals(a.getUserId()));
   }
 
   @Test
