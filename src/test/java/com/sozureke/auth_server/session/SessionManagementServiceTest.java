@@ -41,6 +41,26 @@ class SessionManagementServiceTest {
     return session;
   }
 
+  @Test
+  void revokeAll_deletesEverySessionOfThePrincipal_andReturnsTheCount() {
+    when(sessionRepository.findByPrincipalName(PRINCIPAL))
+        .thenReturn(sessionMap(sessionWithId("session-a"), sessionWithId("session-b")));
+
+    int revoked = service.revokeAll(PRINCIPAL);
+
+    assertThat(revoked).isEqualTo(2);
+    verify(sessionRepository).deleteById("session-a");
+    verify(sessionRepository).deleteById("session-b");
+  }
+
+  @Test
+  void revokeAll_withNoSessions_returnsZero() {
+    when(sessionRepository.findByPrincipalName(PRINCIPAL)).thenReturn(Map.of());
+
+    assertThat(service.revokeAll(PRINCIPAL)).isZero();
+    verify(sessionRepository, never()).deleteById(org.mockito.ArgumentMatchers.anyString());
+  }
+
   // --- listSessions
   // ----------------------------------------------------------------------------
 

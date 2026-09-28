@@ -24,11 +24,25 @@ class AuditLogRepositoryTest {
 
   private Long userId;
 
-  // audit_log.user_id has a real FK to users(id): a hardcoded id only works on a dev DB that
-  // happens to contain that user, and breaks on a fresh CI database. Create the user instead.
+  // Create a real user rather than hardcoding an id: a hardcoded id only works on a dev DB that
+  // happens to contain that user.
   @BeforeEach
   void createUser() {
     userId = userRepository.save(new User("audit-repo-it@example.com", "hash")).getId();
+  }
+
+  @Test
+  void save_acceptsUserIdOfDeletedUser() {
+    Long deletedUserId = userId + 1_000_000;
+
+    AuditLog saved =
+        auditLogRepository.save(
+            new AuditLog(
+                deletedUserId, AuditEventType.USER_DELETED, "user", "1", null, null, Map.of()));
+    auditLogRepository.flush();
+
+    assertThat(auditLogRepository.findById(saved.getId()).orElseThrow().getUserId())
+        .isEqualTo(deletedUserId);
   }
 
   @Test

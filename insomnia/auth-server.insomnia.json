@@ -541,6 +541,236 @@
       "name": "OIDC Discovery",
       "method": "GET",
       "url": "{{ _.base_url }}/.well-known/openid-configuration"
+    },
+    {
+      "_id": "fld_sessions",
+      "_type": "request_group",
+      "parentId": "wrk_auth_server",
+      "name": "Sessions"
+    },
+    {
+      "_id": "req_sessions_list",
+      "_type": "request",
+      "parentId": "fld_sessions",
+      "name": "List my sessions",
+      "description": "Session-cookie auth: log in through OAuth2 > 1/2 (GET+POST /login) first so Insomnia holds the session cookie. The id of each session is its SHA-256 hash.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/auth/sessions"
+    },
+    {
+      "_id": "req_sessions_revoke",
+      "_type": "request",
+      "parentId": "fld_sessions",
+      "name": "Revoke one session",
+      "description": "Replace the hash with an id from the list. 204 = revoked, 404 = no such session for this user.",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/auth/sessions/REPLACE_WITH_SESSION_HASH"
+    },
+    {
+      "_id": "req_sessions_revoke_others",
+      "_type": "request",
+      "parentId": "fld_sessions",
+      "name": "Revoke all other sessions",
+      "description": "Keeps the current session, revokes every other one. 204.",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/auth/sessions"
+    },
+    {
+      "_id": "fld_admin",
+      "_type": "request_group",
+      "parentId": "wrk_auth_server",
+      "name": "Admin"
+    },
+    {
+      "_id": "req_admin_audit",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "Audit log (filter, paginate)",
+      "description": "Needs AUDIT_READ (ADMIN or AUDITOR). Optional params: userId, action (e.g. LOGIN_FAILED), from/to (ISO-8601 instants), page, size.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/audit?action=LOGIN_FAILED&page=0&size=20",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_admin_users_list",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "List users (search, paginate)",
+      "description": "Needs USER_READ. query = email fragment (case-insensitive, % and _ are literal). sort only by id, email, createdAt, enabled; anything else is 400.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/users?query=example&page=0&size=20&sort=email,asc",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_admin_users_get",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "Get user",
+      "description": "Needs USER_READ. 404 = unknown id. Replace 1 with a real user id.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/users/1",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_admin_users_disable",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "Disable user",
+      "description": "Needs USER_WRITE. Sets enabled=false and revokes all of the user's sessions. 409 = you cannot disable yourself. Audited as USER_DISABLED.",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/admin/users/2/disable",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_admin_users_force_logout",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "Force logout user",
+      "description": "Needs USER_WRITE. Revokes every session of the user, returns {\"sessionsRevoked\": n}. Audited as USER_FORCE_LOGOUT.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/admin/users/2/force-logout",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_admin_users_delete",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "Delete user",
+      "description": "Needs USER_WRITE. Hard delete: user, roles, backup codes and sessions are removed, audit rows stay. 204 / 404 / 409 (self). Audited as USER_DELETED.",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/admin/users/2",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_admin_clients_list",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "List clients",
+      "description": "Needs CLIENT_MANAGE. Never returns secrets. sort only by clientId, clientName, createdAt. Create a client with OAuth2 > Register Client.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/clients?page=0&size=20",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_admin_clients_get",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "Get client",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/clients/demo-client",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_admin_clients_update",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "Update client",
+      "description": "Needs CLIENT_MANAGE. Replaces name, redirect URIs and scopes (all required, non-empty). Audited as CLIENT_UPDATED.",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/admin/clients/demo-client",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"clientName\": \"Demo Client Renamed\",\n  \"redirectUris\": [\"http://localhost:8081/callback\"],\n  \"scopes\": [\"openid\", \"profile\"]\n}"
+      }
+    },
+    {
+      "_id": "req_admin_clients_rotate",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "Rotate client secret",
+      "description": "Needs CLIENT_MANAGE. The new secret is in the response and shown only once; the old one stops working. Audited as CLIENT_SECRET_ROTATED.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/admin/clients/demo-client/rotate-secret",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_admin_clients_delete",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "Delete client",
+      "description": "Needs CLIENT_MANAGE. 204 / 404. Audited as CLIENT_DELETED.",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/admin/clients/demo-client",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_admin_sessions",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "All active sessions",
+      "description": "Needs USER_READ. Every logged-in session with principal, ip, user agent and a hashed id, newest activity first. Anonymous sessions are not listed.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/sessions?page=0&size=20",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
+    },
+    {
+      "_id": "req_admin_metrics",
+      "_type": "request",
+      "parentId": "fld_admin",
+      "name": "Metrics",
+      "description": "Needs USER_READ. totalUsers, activeSessions, failedLoginsLast24h.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/metrics",
+      "authentication": {
+        "type": "basic",
+        "username": "admin@example.com",
+        "password": "StrongPassword123!"
+      }
     }
   ]
 }

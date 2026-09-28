@@ -39,6 +39,12 @@ public class SessionManagementService {
         .forEach(sessionRepository::deleteById);
   }
 
+  public int revokeAll(String principalName) {
+    var ids = sessionRepository.findByPrincipalName(principalName).keySet();
+    ids.forEach(sessionRepository::deleteById);
+    return ids.size();
+  }
+
   private Optional<String> findByHash(String principalName, String targetHash) {
     return sessionRepository.findByPrincipalName(principalName).keySet().stream()
         .filter(id -> Sha256.hex(id).equals(targetHash))
