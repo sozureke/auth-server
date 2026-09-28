@@ -1,10 +1,7 @@
 package com.sozureke.auth_server.session;
 
 import com.sozureke.auth_server.session.dto.SessionSummary;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
+import com.sozureke.auth_server.util.Sha256;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.session.FindByIndexNameSessionRepository;
@@ -44,27 +41,17 @@ public class SessionManagementService {
 
   private Optional<String> findByHash(String principalName, String targetHash) {
     return sessionRepository.findByPrincipalName(principalName).keySet().stream()
-        .filter(id -> hash(id).equals(targetHash))
+        .filter(id -> Sha256.hex(id).equals(targetHash))
         .findFirst();
   }
 
   private SessionSummary toSummary(String id, Session session, String currentSessionId) {
     return new SessionSummary(
-        hash(id),
+        Sha256.hex(id),
         id.equals(currentSessionId),
         session.getAttribute("ipAddress"),
         session.getAttribute("userAgent"),
         session.getCreationTime(),
         session.getLastAccessedTime());
-  }
-
-  private static String hash(String sessionId) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] bytes = digest.digest(sessionId.getBytes(StandardCharsets.UTF_8));
-      return HexFormat.of().formatHex(bytes);
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException(e);
-    }
   }
 }
