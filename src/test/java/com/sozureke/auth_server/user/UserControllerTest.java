@@ -16,7 +16,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-@SpringBootTest
+// The default 3/hour register limit is per IP and MockMvc always calls from 127.0.0.1, so a few
+// runs of this class within an hour would start returning 429.
+@SpringBootTest(properties = "app.rate-limit.register.limit=1000")
 @AutoConfigureMockMvc
 @Transactional
 class UserControllerTest {

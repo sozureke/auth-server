@@ -1,12 +1,9 @@
 package com.sozureke.auth_server.audit;
 
+import com.sozureke.auth_server.util.Sha256;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
-import java.util.HexFormat;
 import java.util.Map;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2TokenRevocationAuthenticationToken;
@@ -32,22 +29,12 @@ public class AuditingTokenRevocationSuccessHandler implements AuthenticationSucc
         && revocation.getPrincipal() instanceof Authentication clientPrincipal) {
       String clientId = clientPrincipal.getName();
       Map<String, Object> details = new HashMap<>();
-      details.put("tokenHash", hash(revocation.getToken()));
+      details.put("tokenHash", Sha256.hex(revocation.getToken()));
       if (revocation.getTokenTypeHint() != null) {
         details.put("tokenTypeHint", revocation.getTokenTypeHint());
       }
       auditService.log(null, AuditEventType.TOKEN_REVOKED, "client", clientId, details);
     }
     response.setStatus(HttpServletResponse.SC_OK);
-  }
-
-  private static String hash(String value) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] bytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-      return HexFormat.of().formatHex(bytes);
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException(e);
-    }
   }
 }
