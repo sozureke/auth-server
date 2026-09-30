@@ -123,6 +123,13 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
   }
 
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex) {
+    ApiError error =
+        new ApiError(HttpStatus.BAD_REQUEST.value(), "Invalid request parameter", null);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+  }
+
   @ExceptionHandler(ClientNotFoundException.class)
   public ResponseEntity<ApiError> handleClientNotFound(ClientNotFoundException ex) {
     ApiError error = new ApiError(HttpStatus.NOT_FOUND.value(), ex.getMessage(), null);

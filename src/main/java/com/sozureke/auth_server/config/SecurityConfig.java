@@ -43,6 +43,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/actuator/health", "/actuator/health/**")
                     .permitAll()
+                    .requestMatchers("/api/admin/**")
+                    .hasAnyAuthority("USER_READ", "USER_WRITE", "CLIENT_MANAGE", "AUDIT_READ")
+                    .requestMatchers("/api/clients/**", "/api/clients")
+                    .hasRole("ADMIN")
                     .anyRequest()
                     .authenticated())
         .sessionManagement(
