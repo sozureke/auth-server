@@ -24,9 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
   private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
-  private static final int MAX_FAILED_ATTEMPTS = 5;
-  private static final long LOCK_DURATION_MINUTES = 15;
-
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
   private final AuditService auditService;
@@ -38,7 +35,7 @@ public class AuthService {
     this.auditService = auditService;
   }
 
-  @Transactional
+  @Transactional(noRollbackFor = InvalidCredentialsException.class)
   public UserResponse login(String email, String rawPassword) {
     User user = userRepository.findByEmail(email).orElse(null);
     if (user == null) {
@@ -71,7 +68,7 @@ public class AuthService {
     return UserResponse.from(user);
   }
 
-  @Transactional
+  @Transactional(noRollbackFor = InvalidCredentialsException.class)
   public UserResponse changePassword(String email, String currentPassword, String newPassword) {
     User user = userRepository.findByEmail(email).orElseThrow(InvalidCredentialsException::new);
     verifyCredentials(user, currentPassword);
@@ -167,12 +164,7 @@ public class AuthService {
   }
 
   private void registerFailedAttempt(User user) {
-    int attempts = user.getFailedLoginAttempts() + 1;
-    user.setFailedLoginAttempts(attempts);
-
-    if (attempts >= MAX_FAILED_ATTEMPTS)
-      user.setLockedUntil(LocalDateTime.now().plusMinutes(LOCK_DURATION_MINUTES));
-
+    LoginAttemptService.registerFailure(user);
     userRepository.save(user);
   }
 }
