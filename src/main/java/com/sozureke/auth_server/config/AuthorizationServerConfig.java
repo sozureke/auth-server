@@ -80,6 +80,7 @@ public class AuthorizationServerConfig {
             PathPatternRequestMatcher.pathPattern("/logout"));
 
     http.securityMatcher(matcher)
+        .cors(Customizer.withDefaults())
         .with(
             authorizationServerConfigurer,
             (server) ->

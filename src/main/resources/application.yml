@@ -41,6 +41,11 @@ management:
         enabled: true
 
 app:
+  session:
+    cookie:
+      name: SESSION
+      same-site: Lax
+      secure: false
   issuer-uri: ${APP_ISSUER_URI:http://localhost:${APP_PORT}}
   mfa:
     encryption-key: ${MFA_ENCRYPTION_KEY}

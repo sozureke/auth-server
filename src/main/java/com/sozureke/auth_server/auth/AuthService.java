@@ -102,7 +102,7 @@ public class AuthService {
               user.setResetTokenExpiresAt(LocalDateTime.now().plusHours(1));
               userRepository.save(user);
 
-              log.info("Password reset link: /auth/password-reset?token={}", user.getResetToken());
+              log.debug("Password reset link: /auth/password-reset?token={}", user.getResetToken());
             });
   }
 
@@ -147,7 +147,7 @@ public class AuthService {
     user.setResetTokenExpiresAt(null);
     userRepository.save(user);
 
-    log.info("Verification link: /auth/verify?token={}", user.getVerificationToken());
+    log.debug("Verification link: /auth/verify?token={}", user.getVerificationToken());
 
     return UserResponse.from(user);
   }

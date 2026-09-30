@@ -1,3 +1,8 @@
+app:
+  session:
+    cookie:
+      secure: true
+
 server:
   forward-headers-strategy: native
   tomcat:
