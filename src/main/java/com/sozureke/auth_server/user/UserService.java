@@ -56,7 +56,7 @@ public class UserService {
         "user",
         savedUser.getId().toString(),
         Map.of("email", email));
-    log.info("Verification link: /auth/verify?token={}", savedUser.getVerificationToken());
+    log.debug("Verification link: /auth/verify?token={}", savedUser.getVerificationToken());
     return savedUser;
   }
 

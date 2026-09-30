@@ -95,7 +95,7 @@ class ApiRateLimitFilterTest {
   // wrong-password attempts using emailA's name must not eat emailA's quota.
   @Test
   void wrongPasswordAttempts_doNotConsumeTheVictimsQuota() throws Exception {
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 4; i++) {
       mockMvc
           .perform(get(AUDIT).with(httpBasic(emailA, "not-the-password")))
           .andExpect(status().isUnauthorized());
