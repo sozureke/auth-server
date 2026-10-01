@@ -3,7 +3,10 @@ package com.sozureke.auth_server.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -60,6 +63,22 @@ class AuthServiceTest {
 
     assertThatThrownBy(() -> authService.login(EMAIL, RAW_PASSWORD))
         .isInstanceOf(InvalidCredentialsException.class);
+  }
+
+  @Test
+  void unknownEmail_stillCostsOnePasswordCheck_againstAHashComputedOnceAtStartup() {
+    clearInvocations(passwordEncoder);
+    when(passwordEncoder.encode(anyString())).thenReturn("startup-hash");
+    AuthService service = new AuthService(userRepository, passwordEncoder, auditService);
+    when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.login(EMAIL, RAW_PASSWORD))
+        .isInstanceOf(InvalidCredentialsException.class);
+    assertThatThrownBy(() -> service.changePassword(EMAIL, RAW_PASSWORD, NEW_RAW_PASSWORD))
+        .isInstanceOf(InvalidCredentialsException.class);
+
+    verify(passwordEncoder, times(2)).matches(RAW_PASSWORD, "startup-hash");
+    verify(passwordEncoder, times(1)).encode(anyString());
   }
 
   @Test
