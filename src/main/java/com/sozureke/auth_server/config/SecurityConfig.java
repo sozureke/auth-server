@@ -43,6 +43,9 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/actuator/health", "/actuator/health/**")
                     .permitAll()
+                    .requestMatchers(
+                        "/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**")
+                    .permitAll()
                     .requestMatchers("/api/admin/**")
                     .hasAnyAuthority("USER_READ", "USER_WRITE", "CLIENT_MANAGE", "AUDIT_READ")
                     .requestMatchers("/api/clients/**", "/api/clients")

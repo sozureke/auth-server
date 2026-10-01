@@ -14,7 +14,8 @@ public class TestcontainersInitializer
       new PostgreSQLContainer("postgres:15")
           .withDatabaseName("authdb_test")
           .withUsername("auth_test")
-          .withPassword("auth_test");
+          .withPassword("auth_test")
+          .withCommand("postgres", "-c", "max_connections=300");
 
   private static final GenericContainer<?> REDIS =
       new GenericContainer<>("redis:7").withExposedPorts(6379);
@@ -34,6 +35,7 @@ public class TestcontainersInitializer
             "REDIS_HOST=" + REDIS.getHost(),
             "REDIS_PORT=" + REDIS.getMappedPort(6379),
             "APP_PORT=8080",
+            "spring.datasource.hikari.maximum-pool-size=4",
             "MFA_ENCRYPTION_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
         .applyTo(context.getEnvironment());
   }

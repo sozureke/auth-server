@@ -126,6 +126,11 @@ class OAuthFlowE2ETest {
     assertThat(introspect(tokens.path("access_token").asString()).path("active").asBoolean())
         .isTrue();
 
+    MockHttpServletResponse userInfo = userInfo(tokens.path("access_token").asString());
+    assertThat(userInfo.getStatus()).as(userInfo.getContentAsString()).isEqualTo(200);
+    assertThat(objectMapper.readTree(userInfo.getContentAsString()).path("sub").asString())
+        .isEqualTo(email);
+
     String firstRefresh = tokens.path("refresh_token").asString();
     JsonNode refreshed = refresh(clientId, firstRefresh);
     assertThat(refreshed.path("access_token").asString()).isNotBlank();
@@ -150,6 +155,25 @@ class OAuthFlowE2ETest {
                 .getStatus())
         .isEqualTo(200);
     assertThat(introspect(accessToRevoke).path("active").asBoolean()).isFalse();
+    assertThat(userInfo(accessToRevoke).getStatus()).isEqualTo(401);
+  }
+
+  @Test
+  void userInfo_rejectsForgedAndMissingTokens() throws Exception {
+    assertThat(userInfo("not-a-jwt").getStatus()).isEqualTo(401);
+    assertThat(
+            mockMvc.perform(get("/userinfo").with(fromIp())).andReturn().getResponse().getStatus())
+        .isEqualTo(401);
+  }
+
+  private MockHttpServletResponse userInfo(String accessToken) throws Exception {
+    return mockMvc
+        .perform(
+            get("/userinfo")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .with(fromIp()))
+        .andReturn()
+        .getResponse();
   }
 
   @Test

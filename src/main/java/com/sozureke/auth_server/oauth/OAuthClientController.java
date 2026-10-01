@@ -5,6 +5,10 @@ import com.sozureke.auth_server.audit.AuditService;
 import com.sozureke.auth_server.auth.AuthUserDetails;
 import com.sozureke.auth_server.oauth.dto.OAuthClientResponse;
 import com.sozureke.auth_server.oauth.dto.RegisterClientRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.UUID;
@@ -25,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/clients")
+@Tag(name = "Admin: OAuth clients")
 public class OAuthClientController {
   private final RegisteredClientRepository registeredClientRepository;
   private final PasswordEncoder passwordEncoder;
@@ -41,8 +46,16 @@ public class OAuthClientController {
 
   @PostMapping
   @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Register an OAuth client",
+      description =
+          "Needs the ADMIN role. Creates a confidential client (client_secret_basic,"
+              + " authorization_code + refresh_token, PKCE required) and returns the generated"
+              + " secret once; only its hash is stored.")
+  @ApiResponse(responseCode = "201", description = "Client created, secret returned once")
+  @ApiResponse(responseCode = "400", description = "Validation failed")
   public ResponseEntity<OAuthClientResponse> register(
-      @AuthenticationPrincipal AuthUserDetails principal,
+      @Parameter(hidden = true) @AuthenticationPrincipal AuthUserDetails principal,
       @Valid @RequestBody RegisterClientRequest request) {
     String rawSecret = UUID.randomUUID().toString();
     String hashedSecret = passwordEncoder.encode(rawSecret);
