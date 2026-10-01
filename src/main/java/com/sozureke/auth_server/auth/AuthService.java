@@ -27,18 +27,21 @@ public class AuthService {
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
   private final AuditService auditService;
+  private final String unknownUserPasswordHash;
 
   public AuthService(
       UserRepository userRepository, PasswordEncoder passwordEncoder, AuditService auditService) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.auditService = auditService;
+    this.unknownUserPasswordHash = passwordEncoder.encode(UUID.randomUUID().toString());
   }
 
   @Transactional(noRollbackFor = InvalidCredentialsException.class)
   public UserResponse login(String email, String rawPassword) {
     User user = userRepository.findByEmail(email).orElse(null);
     if (user == null) {
+      passwordEncoder.matches(rawPassword, unknownUserPasswordHash);
       auditService.log(
           null,
           AuditEventType.LOGIN_FAILED,
@@ -70,7 +73,11 @@ public class AuthService {
 
   @Transactional(noRollbackFor = InvalidCredentialsException.class)
   public UserResponse changePassword(String email, String currentPassword, String newPassword) {
-    User user = userRepository.findByEmail(email).orElseThrow(InvalidCredentialsException::new);
+    User user = userRepository.findByEmail(email).orElse(null);
+    if (user == null) {
+      passwordEncoder.matches(currentPassword, unknownUserPasswordHash);
+      throw new InvalidCredentialsException();
+    }
     verifyCredentials(user, currentPassword);
 
     user.setPasswordHash(passwordEncoder.encode(newPassword));
